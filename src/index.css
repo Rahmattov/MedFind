@@ -1,8 +1,24 @@
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@400;500;600;700&display=swap");
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #edf5f5;
+  --color-brand-100: #dfeceb;
+  --color-brand-200: #bfdad8;
+  --color-brand-300: #94c0be;
+  --color-brand-400: #5e9d9d;
+  --color-brand-500: #3e7d7f;
+  --color-brand-600: #2d6465;
+  --color-brand-700: #254f50;
+  --color-brand-800: #1d4041;
+  --color-brand-900: #0f3d3e;
+  --color-accent: #c9a227;
+  --color-sand: #faf8f3;
+  --font-sans: Inter, sans-serif;
+  --font-display: Fraunces, Georgia, serif;
+  --shadow-soft: 0 16px 40px rgb(15 61 62 / 8%);
+}
 
 @layer base {
   html {
