@@ -1,32 +1,43 @@
-import { NavLink, Link } from 'react-router-dom'
+import { NavLink, Link } from "react-router-dom";
 
 const links = [
-  { to: '/', label: 'Главная' },
-  { to: '/search', label: 'Врачи' },
-]
+  { to: "/", label: "Главная" },
+  { to: "/search", label: "Врачи" },
+  { to: "/login", label: "Войти" },
+  { to: "/register", label: "Регистрация" },
+  { to: "/dashboard", label: "Личный кабинет" },
+];
 
 export default function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl items-center gap-8 px-6 py-4">
-        <Link to="/" className="mr-auto flex items-center gap-2 font-display text-xl font-semibold text-brand-900">
+
+        <Link
+          to="/"
+          className="mr-auto flex items-center gap-2 font-display text-xl font-semibold text-brand-900"
+        >
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-brand-900">
             <PulseIcon />
           </span>
+
           MedFind
         </Link>
 
-        <nav className="hidden items-center gap-7 md:flex">
+        {/* Navigation */}
+        <nav className="hidden items-center gap-6 md:flex">
           {links.map(({ to, label }) => (
             <NavLink
               key={to}
               to={to}
-              end={to === '/'}
+              end={to === "/"}
               className={({ isActive }) =>
                 [
-                  'pb-1 text-sm transition-colors',
-                  isActive ? 'border-b-2 border-brand-900 text-brand-900' : 'text-slate-500 hover:text-slate-700',
-                ].join(' ')
+                  "pb-1 text-sm transition-colors",
+                  isActive
+                    ? "border-b-2 border-brand-900 text-brand-900"
+                    : "text-slate-500 hover:text-slate-700",
+                ].join(" ")
               }
             >
               {label}
@@ -42,7 +53,7 @@ export default function Header() {
         </Link>
       </div>
     </header>
-  )
+  );
 }
 
 function PulseIcon() {
@@ -56,5 +67,5 @@ function PulseIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  )
+  );
 }
