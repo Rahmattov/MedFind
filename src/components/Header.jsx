@@ -13,6 +13,7 @@ export default function Header() {
     <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl items-center gap-8 px-6 py-4">
 
+        {/* Logo */}
         <Link
           to="/"
           className="mr-auto flex items-center gap-2 font-display text-xl font-semibold text-brand-900"
@@ -45,6 +46,7 @@ export default function Header() {
           ))}
         </nav>
 
+        {/* Main appointment button */}
         <Link
           to="/search"
           className="inline-flex items-center rounded-full bg-brand-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
