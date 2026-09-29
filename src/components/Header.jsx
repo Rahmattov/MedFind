@@ -3,9 +3,8 @@ import { NavLink, Link } from "react-router-dom";
 const links = [
   { to: "/", label: "Главная" },
   { to: "/search", label: "Врачи" },
-  { to: "/login", label: "Войти" },
-  { to: "/register", label: "Регистрация" },
   { to: "/dashboard", label: "Личный кабинет" },
+  { to: "/login", label: "Войти" },
 ];
 
 export default function Header() {
@@ -13,7 +12,6 @@ export default function Header() {
     <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl items-center gap-8 px-6 py-4">
 
-        {/* Logo */}
         <Link
           to="/"
           className="mr-auto flex items-center gap-2 font-display text-xl font-semibold text-brand-900"
@@ -25,7 +23,6 @@ export default function Header() {
           MedFind
         </Link>
 
-        {/* Navigation */}
         <nav className="hidden items-center gap-6 md:flex">
           {links.map(({ to, label }) => (
             <NavLink
@@ -46,7 +43,6 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* Main appointment button */}
         <Link
           to="/search"
           className="inline-flex items-center rounded-full bg-brand-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
