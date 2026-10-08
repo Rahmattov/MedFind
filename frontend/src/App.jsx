@@ -1,11 +1,19 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+
 import Header from "./components/Header";
+
 import Home from "./pages/Home";
 import DoctorSearch from "./pages/DoctorSearch";
 import DoctorProfile from "./pages/DoctorProfile";
+
 import PatientLogin from "./pages/PatientLogin";
 import PatientRegister from "./pages/PatientRegister";
 import PatientProfile from "./pages/PatientProfile";
+
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+
 import RequireAuth from "./components/RequireAuth";
 
 export default function App() {
@@ -16,10 +24,13 @@ export default function App() {
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<Home />} />
+
           <Route path="/search" element={<DoctorSearch />} />
+
           <Route path="/doctor/:id" element={<DoctorProfile />} />
 
           <Route path="/login" element={<PatientLogin />} />
+
           <Route path="/register" element={<PatientRegister />} />
 
           <Route
@@ -28,6 +39,28 @@ export default function App() {
               <RequireAuth>
                 <PatientProfile />
               </RequireAuth>
+            }
+          />
+
+          <Route path="/dashboard" element={<Dashboard />} />
+
+          <Route
+            path="/profile-demo"
+            element={<Navigate to="/doctor/1" replace />}
+          />
+
+          <Route
+            path="*"
+            element={
+              <div className="mx-auto max-w-6xl px-6 py-20 text-center">
+                <h1 className="font-display text-5xl text-brand-900">
+                  404
+                </h1>
+
+                <p className="mt-3 text-slate-500">
+                  Page not found
+                </p>
+              </div>
             }
           />
         </Routes>
