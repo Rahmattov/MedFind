@@ -1,18 +1,17 @@
 import { NavLink, Link } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
 
 const links = [
   { to: "/", label: "Главная" },
   { to: "/search", label: "Врачи" },
   { to: "/dashboard", label: "Личный кабинет" },
+  { to: "/login", label: "Войти" },
 ];
 
 export default function Header() {
-  const { patient, loading } = useAuth();
-
   return (
     <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/90 backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl items-center gap-8 px-6 py-4">
+
         <Link
           to="/"
           className="mr-auto flex items-center gap-2 font-display text-xl font-semibold text-brand-900"
@@ -20,6 +19,7 @@ export default function Header() {
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-brand-900">
             <PulseIcon />
           </span>
+
           MedFind
         </Link>
 
@@ -43,31 +43,12 @@ export default function Header() {
           ))}
         </nav>
 
-        {!loading &&
-          (patient ? (
-            <Link
-              to="/profile"
-              className="inline-flex items-center rounded-full bg-brand-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
-            >
-              Мой профиль
-            </Link>
-          ) : (
-            <div className="flex items-center gap-4">
-              <Link
-                to="/register"
-                className="text-sm font-semibold text-brand-900 transition hover:text-brand-700"
-              >
-                Регистрация
-              </Link>
-
-              <Link
-                to="/login"
-                className="inline-flex items-center rounded-full bg-brand-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
-              >
-                Войти
-              </Link>
-            </div>
-          ))}
+        <Link
+          to="/search"
+          className="inline-flex items-center rounded-full bg-brand-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+        >
+          Записаться на приём
+        </Link>
       </div>
     </header>
   );
