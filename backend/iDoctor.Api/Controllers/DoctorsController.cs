@@ -16,6 +16,74 @@ public class DoctorsController : ControllerBase
     private readonly ApplicationDbContext _db;
     public DoctorsController(ApplicationDbContext db) => _db = db;
 
+    // GET /api/doctors?q=&specialtyId=&clinicId=&cityId=&minExperience=&maxPrice=&sortBy=&page=&pageSize=
+    [AllowAnonymous]
+    [HttpGet]
+    public async Task<ActionResult<PagedResult<DoctorListItemDto>>> Search([FromQuery] DoctorSearchQuery query)
+    {
+        var doctors = _db.Doctors.AsNoTracking()
+            .Where(d => d.IsVerified && d.User.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(query.Q))
+        {
+            var pattern = query.Q.ToContainsPattern();
+            doctors = doctors.Where(d => EF.Functions.ILike(d.User.FullName, pattern));
+        }
+        if (query.SpecialtyId.HasValue)
+            doctors = doctors.Where(d => d.Specialties.Any(s => s.Id == query.SpecialtyId));
+        if (query.ClinicId.HasValue)
+            doctors = doctors.Where(d => d.Clinics.Any(c => c.Id == query.ClinicId && c.IsActive));
+        if (query.CityId.HasValue)
+            doctors = doctors.Where(d => d.Clinics.Any(c => c.CityId == query.CityId && c.IsActive));
+        if (query.MinExperience.HasValue)
+            doctors = doctors.Where(d => d.ExperienceYears >= query.MinExperience);
+        if (query.MaxPrice.HasValue)
+            doctors = doctors.Where(d => d.ConsultationPrice != null && d.ConsultationPrice <= query.MaxPrice);
+
+        // UserId as the last tiebreaker keeps page boundaries stable
+        var ordered = query.SortBy switch
+        {
+            "experience" => doctors.OrderByDescending(d => d.ExperienceYears)
+                                   .ThenBy(d => d.User.FullName).ThenBy(d => d.UserId),
+            "price_asc"  => doctors.OrderBy(d => d.ConsultationPrice)          // nulls sort last
+                                   .ThenBy(d => d.User.FullName).ThenBy(d => d.UserId),
+            "price_desc" => doctors.OrderByDescending(d => d.ConsultationPrice.HasValue)
+                                   .ThenByDescending(d => d.ConsultationPrice)
+                                   .ThenBy(d => d.User.FullName).ThenBy(d => d.UserId),
+            "name"       => doctors.OrderBy(d => d.User.FullName).ThenBy(d => d.UserId),
+            _            => doctors.OrderByDescending(d => d.AverageRating)
+                                   .ThenByDescending(d => d.ExperienceYears)
+                                   .ThenBy(d => d.User.FullName).ThenBy(d => d.UserId)
+        };
+
+        var total = await ordered.CountAsync();
+
+        var items = await ordered
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(d => new DoctorListItemDto
+            {
+                Id = d.UserId,
+                FullName = d.User.FullName,
+                PhotoUrl = d.PhotoUrl,
+                ExperienceYears = d.ExperienceYears,
+                ConsultationPrice = d.ConsultationPrice,
+                AverageRating = d.AverageRating,
+                Specialties = d.Specialties.Select(s => new SpecialtyDto(s.Id, s.Name)).ToList(),
+                Clinics = d.Clinics.Where(c => c.IsActive)
+                                   .Select(c => new ClinicSummaryDto(c.Id, c.Name, c.Address)).ToList()
+            })
+            .ToListAsync();
+
+        return Ok(new PagedResult<DoctorListItemDto>
+        {
+            Items = items,
+            Page = query.Page,
+            PageSize = query.PageSize,
+            TotalCount = total
+        });
+    }
+
     // Public: only verified, active doctors are visible
     [AllowAnonymous]
     [HttpGet("{id:guid}")]

@@ -68,6 +68,19 @@ public class DataSeeder : IHostedService
                 new Specialty { Name = "Dermatologist" });
         }
         await db.SaveChangesAsync(cancellationToken);
+
+                // Starter clinics (placeholder data, replace with real clinics later)
+        if (!await db.Clinics.AnyAsync(cancellationToken))
+        {
+            var dushanbe = await db.Cities.FirstOrDefaultAsync(c => c.Name == "Dushanbe", cancellationToken);
+            var khujand = await db.Cities.FirstOrDefaultAsync(c => c.Name == "Khujand", cancellationToken);
+
+            db.Clinics.AddRange(
+                new Clinic { Name = "City Medical Center", CityId = dushanbe?.Id, Address = "Rudaki Ave 10", Phone = "+992372000001" },
+                new Clinic { Name = "Family Health Clinic", CityId = dushanbe?.Id, Address = "Somoni Ave 25", Phone = "+992372000002" },
+                new Clinic { Name = "Sughd Diagnostic Center", CityId = khujand?.Id, Address = "Ismoili Somoni St 5", Phone = "+992342000003" });
+            await db.SaveChangesAsync(cancellationToken);
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
