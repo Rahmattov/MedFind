@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { ACCESS_TOKEN_KEY, USER_KEY } from "../api/client";
+import { ACCESS_TOKEN_KEY, USER_KEY, apiRequest } from "../api/client";
 
 const AuthContext = createContext(null);
 const TOKEN_KEY = ACCESS_TOKEN_KEY;
@@ -89,63 +89,6 @@ async function getCurrentPatient(user) {
   if (!isPatient(user)) return user;
   const profile = await apiRequest("/patients/me");
   return { ...user, ...getUser(profile) };
-}
-
-async function apiRequest(path, options = {}) {
-  const baseUrl = (
-    import.meta.env.VITE_API_BASE_URL ||
-    "https://idoctor-tj-backend.onrender.com/api"
-  ).replace(/\/$/, "");
-  const token = localStorage.getItem(TOKEN_KEY);
-  const headers = new Headers(options.headers || {});
-
-  if (options.body && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-  if (token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  let response;
-  try {
-    response = await fetch(`${baseUrl}${path}`, {
-      ...options,
-      headers,
-    });
-  } catch (requestError) {
-    if (requestError.name === "AbortError") throw requestError;
-    throw new Error(
-      "Не удалось связаться с сервером. Проверьте подключение к интернету и попробуйте позже.",
-    );
-  }
-  const text = await response.text();
-  let payload = null;
-
-  if (text) {
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = { message: text };
-    }
-  }
-
-  if (!response.ok) {
-    const validationMessages = Object.values(payload?.errors ?? {})
-      .flat()
-      .filter((value) => typeof value === "string");
-    const error = new Error(
-      payload?.message ||
-        payload?.error ||
-        payload?.detail ||
-        payload?.title ||
-        validationMessages.join(" ") ||
-        "Не удалось выполнить запрос. Попробуйте ещё раз.",
-    );
-    error.status = response.status;
-    throw error;
-  }
-
-  return payload;
 }
 
 function saveSession(payload, patient) {

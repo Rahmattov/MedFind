@@ -26,7 +26,7 @@ export default function DoctorCard({ doctor }) {
           💰{" "}
           {doctor.price == null
             ? "Цена не указана"
-            : `${doctor.price.toLocaleString("ru-RU")} ₸ / приём`}
+            : `${doctor.price.toLocaleString("ru-RU")} с / приём`}
         </p>
 
         {doctor.experience && (
