@@ -9,6 +9,7 @@ export default function PatientProfile() {
   const [refreshError, setRefreshError] = useState("");
   const fullName =
     [patient?.firstName, patient?.lastName].filter(Boolean).join(" ") ||
+    patient?.fullName ||
     patient?.name ||
     "Пациент";
   const fields = [
@@ -21,7 +22,7 @@ export default function PatientProfile() {
         : "",
     ],
     ["Пол", patient?.gender],
-    ["Адрес", patient?.address],
+    ["Город", patient?.cityName],
   ];
 
   async function handleRefresh() {

@@ -1,28 +1,77 @@
-import { useState } from "react";
-import { doctors } from "../data/doctors";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { getSpecialtyLabel, listSpecialties, searchDoctors } from "../api/doctors";
 import DoctorCard from "../components/DoctorCard";
 
 export default function DoctorSearch() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [specialty, setSpecialty] = useState("Все");
+  const [specialty, setSpecialty] = useState(
+    searchParams.get("specialtyId") || "",
+  );
+  const [specialties, setSpecialties] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reload, setReload] = useState(0);
 
-  const specialties = [
-    "Все",
-    ...new Set(doctors.map((doctor) => doctor.specialty)),
-  ];
+  useEffect(() => {
+    let active = true;
+    listSpecialties()
+      .then((result) => {
+        if (active) setSpecialties(result ?? []);
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  const filteredDoctors = doctors.filter((doctor) => {
-    const searchText = search.toLowerCase();
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    setLoading(true);
 
-    const matchesSearch =
-      doctor.name.toLowerCase().includes(searchText) ||
-      doctor.specialty.toLowerCase().includes(searchText);
+    const timer = setTimeout(() => {
+      searchDoctors(
+        { q: search.trim(), specialtyId: specialty, page, pageSize: 12 },
+        { signal: controller.signal },
+      )
+        .then((result) => {
+          if (!active) return;
+          setDoctors(result.items);
+          setTotalCount(result.totalCount ?? 0);
+          setTotalPages(result.totalPages ?? 1);
+          setError("");
+        })
+        .catch((requestError) => {
+          if (active && requestError.name !== "AbortError") {
+            setError(requestError.message);
+          }
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 250);
 
-    const matchesSpecialty =
-      specialty === "Все" || doctor.specialty === specialty;
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [search, specialty, page, reload]);
 
-    return matchesSearch && matchesSpecialty;
-  });
+  function updateSpecialty(value) {
+    setSpecialty(value);
+    setPage(1);
+    if (value) setSearchParams({ specialtyId: value }, { replace: true });
+    else setSearchParams({}, { replace: true });
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
@@ -55,7 +104,10 @@ export default function DoctorSearch() {
               id="doctor-search"
               type="text"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
               placeholder="Например: терапевт или Иван"
               className="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-brand-900 focus:ring-2 focus:ring-brand-100"
             />
@@ -72,12 +124,13 @@ export default function DoctorSearch() {
             <select
               id="specialty"
               value={specialty}
-              onChange={(event) => setSpecialty(event.target.value)}
+              onChange={(event) => updateSpecialty(event.target.value)}
               className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-900 focus:ring-2 focus:ring-brand-100"
             >
+              <option value="">Все специальности</option>
               {specialties.map((item) => (
-                <option key={item} value={item}>
-                  {item}
+                <option key={item.id} value={item.id}>
+                  {getSpecialtyLabel(item)}
                 </option>
               ))}
             </select>
@@ -91,13 +144,28 @@ export default function DoctorSearch() {
         </h2>
 
         <p className="text-sm text-slate-500">
-          Найдено: {filteredDoctors.length}
+          Найдено: {totalCount}
         </p>
       </div>
 
-      {filteredDoctors.length > 0 ? (
+      {loading ? (
+        <p role="status" className="py-8 text-center text-sm text-slate-500">
+          Загружаем врачей...
+        </p>
+      ) : error ? (
+        <div role="alert" className="rounded-xl bg-red-50 p-5 text-sm text-red-700">
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={() => setReload((current) => current + 1)}
+            className="mt-3 font-semibold underline"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      ) : doctors.length > 0 ? (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {filteredDoctors.map((doctor) => (
+          {doctors.map((doctor) => (
             <DoctorCard
               key={doctor.id}
               doctor={doctor}
@@ -119,11 +187,35 @@ export default function DoctorSearch() {
             type="button"
             onClick={() => {
               setSearch("");
-              setSpecialty("Все");
+              updateSpecialty("");
             }}
             className="mt-5 rounded-xl bg-brand-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
           >
             Сбросить поиск
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-center gap-4">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((current) => current - 1)}
+            className="rounded-lg border border-stone-300 px-4 py-2 text-sm disabled:opacity-50"
+          >
+            Назад
+          </button>
+          <span className="text-sm text-slate-600">
+            Страница {page} из {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => setPage((current) => current + 1)}
+            className="rounded-lg border border-stone-300 px-4 py-2 text-sm disabled:opacity-50"
+          >
+            Далее
           </button>
         </div>
       )}

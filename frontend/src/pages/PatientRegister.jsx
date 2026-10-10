@@ -33,10 +33,14 @@ export default function PatientRegister() {
       setError("Введите корректный адрес электронной почты.");
       return;
     }
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}/.test(form.password)) {
+    if (!/(?=.*[a-z])(?=.*\d).{8,}/.test(form.password)) {
       setError(
-        "Пароль должен содержать минимум 8 символов, заглавную и строчную буквы, а также цифру.",
+        "Пароль должен содержать минимум 8 символов, строчную букву и цифру.",
       );
+      return;
+    }
+    if (!/^\+992\d{9}$/.test(form.phone.trim())) {
+      setError("Укажите номер телефона в формате +992XXXXXXXXX.");
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -151,6 +155,10 @@ export default function PatientRegister() {
           name="phone"
           type="tel"
           autoComplete="tel"
+          placeholder="+992XXXXXXXXX"
+          pattern="\+992\d{9}"
+          title="Формат: +992XXXXXXXXX"
+          required
           value={form.phone}
           onChange={updateField}
           className="mt-2 w-full rounded-lg border border-stone-300 bg-sand px-3.5 py-3 outline-none focus:border-brand-700"
@@ -167,6 +175,7 @@ export default function PatientRegister() {
           type="password"
           autoComplete="new-password"
           minLength={8}
+          pattern="(?=.*[a-z])(?=.*\d).{8,}"
           required
           value={form.password}
           onChange={updateField}

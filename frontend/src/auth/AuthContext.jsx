@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { ACCESS_TOKEN_KEY, USER_KEY } from "../api/client";
 
 const AuthContext = createContext(null);
-const TOKEN_KEY = "medfind_access_token";
-const USER_KEY = "medfind_patient";
+const TOKEN_KEY = ACCESS_TOKEN_KEY;
 const MOCK_ACCOUNTS_KEY = "medfind_mock_accounts";
 const MOCK_SESSION_KEY = "medfind_mock_session";
 export const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === "true";
@@ -57,9 +57,23 @@ function mockAccountError(message) {
 function getUser(payload) {
   const data = payload?.data ?? payload;
   const user = data?.patient ?? data?.user ?? data;
-  return user && (user.id || user.email || user.firstName || user.name)
-    ? user
-    : null;
+  if (
+    !user ||
+    !(user.id || user.email || user.firstName || user.name || user.fullName)
+  ) {
+    return null;
+  }
+
+  const fullName = user.fullName ?? user.name ?? "";
+  const [firstName = "", ...lastNameParts] = fullName.trim().split(/\s+/);
+  return {
+    ...user,
+    fullName,
+    firstName: user.firstName ?? firstName,
+    lastName: user.lastName ?? lastNameParts.join(" "),
+    name: user.name ?? fullName,
+    phone: user.phone ?? user.phoneNumber,
+  };
 }
 
 function getToken(payload) {
@@ -67,9 +81,20 @@ function getToken(payload) {
   return data?.accessToken ?? data?.token;
 }
 
+function isPatient(user) {
+  return user?.roles?.some((role) => role.toLowerCase() === "patient") ?? false;
+}
+
+async function getCurrentPatient(user) {
+  if (!isPatient(user)) return user;
+  const profile = await apiRequest("/patients/me");
+  return { ...user, ...getUser(profile) };
+}
+
 async function apiRequest(path, options = {}) {
   const baseUrl = (
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api"
+    import.meta.env.VITE_API_BASE_URL ||
+    "https://idoctor-tj-backend.onrender.com/api"
   ).replace(/\/$/, "");
   const token = localStorage.getItem(TOKEN_KEY);
   const headers = new Headers(options.headers || {});
@@ -81,11 +106,18 @@ async function apiRequest(path, options = {}) {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
+  let response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch (requestError) {
+    if (requestError.name === "AbortError") throw requestError;
+    throw new Error(
+      "Не удалось связаться с сервером. Проверьте подключение к интернету и попробуйте позже.",
+    );
+  }
   const text = await response.text();
   let payload = null;
 
@@ -98,9 +130,15 @@ async function apiRequest(path, options = {}) {
   }
 
   if (!response.ok) {
+    const validationMessages = Object.values(payload?.errors ?? {})
+      .flat()
+      .filter((value) => typeof value === "string");
     const error = new Error(
       payload?.message ||
         payload?.error ||
+        payload?.detail ||
+        payload?.title ||
+        validationMessages.join(" ") ||
         "Не удалось выполнить запрос. Попробуйте ещё раз.",
     );
     error.status = response.status;
@@ -133,11 +171,12 @@ export function AuthProvider({ children }) {
     let active = true;
 
     apiRequest("/auth/me")
-      .then((payload) => {
-        const currentPatient = getUser(payload);
+      .then(getUser)
+      .then(getCurrentPatient)
+      .then((currentPatient) => {
         if (!active) return;
         setPatient(currentPatient);
-        saveSession(payload, currentPatient);
+        saveSession(null, currentPatient);
         setAuthError("");
       })
       .catch((error) => {
@@ -164,11 +203,9 @@ export function AuthProvider({ children }) {
       method: "POST",
       body: JSON.stringify(credentials),
     });
-    let currentPatient = getUser(payload);
-
-    if (!currentPatient) {
-      currentPatient = await apiRequest("/auth/me").then(getUser);
-    }
+    const token = getToken(payload);
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    const currentPatient = await getCurrentPatient(getUser(payload));
 
     saveSession(payload, currentPatient);
     setPatient(currentPatient);
@@ -214,7 +251,12 @@ export function AuthProvider({ children }) {
       return account.patient;
     }
 
-    return authenticate("/auth/register", { ...details, role: "patient" });
+    return authenticate("/auth/register/patient", {
+      fullName: `${details.firstName.trim()} ${details.lastName.trim()}`.trim(),
+      email: details.email.trim(),
+      phoneNumber: details.phone.trim(),
+      password: details.password,
+    });
   }
 
   async function login(credentials) {
@@ -261,8 +303,7 @@ export function AuthProvider({ children }) {
       return account.patient;
     }
 
-    const payload = await apiRequest("/auth/me");
-    const currentPatient = getUser(payload);
+    const currentPatient = getUser(await apiRequest("/patients/me"));
     saveSession(payload, currentPatient);
     setPatient(currentPatient);
     setAuthError("");
@@ -276,11 +317,6 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    try {
-      await apiRequest("/auth/logout", { method: "POST" });
-    } catch {
-      // Clear the local session even when the API logout endpoint is unavailable.
-    }
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setPatient(null);

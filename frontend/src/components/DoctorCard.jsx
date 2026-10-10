@@ -9,7 +9,7 @@ export default function DoctorCard({ doctor }) {
         </div>
 
         <span className="text-sm font-semibold text-accent">
-          ★ {doctor.rating}
+          ★ {doctor.rating ?? "—"}
         </span>
       </div>
 
@@ -23,7 +23,10 @@ export default function DoctorCard({ doctor }) {
 
       <div className="mt-4 space-y-2 text-sm text-slate-500">
         <p>
-          💰 {doctor.price.toLocaleString("ru-RU")} ₸ / приём
+          💰{" "}
+          {doctor.price == null
+            ? "Цена не указана"
+            : `${doctor.price.toLocaleString("ru-RU")} ₸ / приём`}
         </p>
 
         {doctor.experience && (
@@ -42,19 +45,15 @@ export default function DoctorCard({ doctor }) {
         >
           Подробнее
         </Link>
-
-        <Link
-          to={`/doctor/${doctor.id}`}
-          className="flex-1 rounded-xl bg-brand-900 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-brand-700"
-        >
-          Записаться
-        </Link>
+        <span className="flex-1 py-2.5 text-center text-xs text-slate-500">
+          Запись скоро
+        </span>
       </div>
     </div>
   );
 }
 
-function getInitials(name) {
+function getInitials(name = "") {
   return name
     .split(" ")
     .map((part) => part[0])

@@ -1,8 +1,38 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { doctors } from "../data/doctors";
+import { getSpecialtyLabel, listSpecialties, searchDoctors } from "../api/doctors";
 
 export default function Home() {
-  const featured = doctors.slice(0, 4);
+  const [featured, setFeatured] = useState([]);
+  const [specialties, setSpecialties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reload, setReload] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([
+      searchDoctors({ page: 1, pageSize: 4 }),
+      listSpecialties(),
+    ])
+      .then(([doctorResult, specialtyResult]) => {
+        if (!active) return;
+        setFeatured(doctorResult.items);
+        setSpecialties(specialtyResult ?? []);
+        setError("");
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [reload]);
 
   return (
     <div>
@@ -17,8 +47,8 @@ export default function Home() {
             которому доверяете
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
-            Более 200 проверенных специалистов в Алматы. Смотрите рейтинг, опыт
-            и стоимость приёма перед записью.
+            Сравните опыт, рейтинг и стоимость приёма, чтобы выбрать подходящего
+            специалиста.
           </p>
           <Link
             to="/search"
@@ -38,13 +68,13 @@ export default function Home() {
           Специальности
         </h2>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {["Кардиолог", "Терапевт", "Дерматолог", "Педиатр"].map((s) => (
+          {specialties.slice(0, 4).map((specialty) => (
             <Link
-              key={s}
-              to="/search"
+              key={specialty.id}
+              to={`/search?specialtyId=${specialty.id}`}
               className="rounded-2xl border border-stone-200 bg-white p-6 text-center text-base font-semibold text-slate-700 shadow-sm transition hover:border-brand-600 hover:text-brand-900"
             >
-              {s}
+              {getSpecialtyLabel(specialty)}
             </Link>
           ))}
         </div>
@@ -60,6 +90,31 @@ export default function Home() {
           </Link>
         </div>
 
+        {error && (
+          <div className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
+            <p>{error}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                setReload((current) => current + 1);
+              }}
+              className="mt-3 font-semibold underline"
+            >
+              Попробовать снова
+            </button>
+          </div>
+        )}
+        {loading && !error && (
+          <p role="status" className="text-sm text-slate-500">
+            Загружаем врачей...
+          </p>
+        )}
+        {!loading && !error && featured.length === 0 && (
+          <p className="rounded-xl border border-stone-200 bg-white p-5 text-sm text-slate-500">
+            Пока нет врачей, доступных для записи.
+          </p>
+        )}
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {featured.map((doc) => (
             <Link
@@ -80,7 +135,9 @@ export default function Home() {
               </p>
               <p className="mt-1 text-sm text-slate-500">{doc.specialty}</p>
               <p className="mt-4 text-sm text-slate-500">
-                {doc.price.toLocaleString("ru-RU")} ₸ / приём
+                {doc.price == null
+                  ? "Стоимость не указана"
+                  : `${doc.price.toLocaleString("ru-RU")} ₸ / приём`}
               </p>
             </Link>
           ))}
@@ -90,7 +147,7 @@ export default function Home() {
   );
 }
 
-function initials(name) {
+function initials(name = "") {
   return name
     .split(" ")
     .map((p) => p[0])
