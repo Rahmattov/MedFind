@@ -187,7 +187,7 @@ export function AuthProvider({ children }) {
           firstName: details.firstName.trim(),
           lastName: details.lastName.trim(),
           email,
-          phone: details.phone.trim(),
+          phone: (details.phone ?? details.phoneNumber ?? "").trim(),
           dateOfBirth: details.dateOfBirth || "",
           gender: details.gender || "",
           address: details.address || "",
@@ -205,12 +205,18 @@ export function AuthProvider({ children }) {
     return authenticate("/auth/register/patient", {
       fullName: `${details.firstName.trim()} ${details.lastName.trim()}`.trim(),
       email: details.email.trim(),
-      phoneNumber: details.phone.trim(),
+      phoneNumber: (details.phone ?? details.phoneNumber ?? "").trim(),
       password: details.password,
     });
   }
 
   async function registerDoctor(details) {
+    if (USE_MOCK_AUTH) {
+      throw mockAccountError(
+        "Регистрация врача недоступна в демо-режиме. Временно можно зарегистрировать аккаунт пациента.",
+      );
+    }
+
     return authenticate("/auth/register/doctor", {
       fullName: `${details.firstName?.trim() ?? ""} ${details.lastName?.trim() ?? ""}`.trim(),
       email: details.email.trim(),

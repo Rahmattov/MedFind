@@ -47,7 +47,7 @@ export default function PatientLogin() {
         {successMessage && (
           <p
             role="status"
-            className="mt-4 rounded-lg bg-emerald-50 px-3.5 py-3 text-sm text-emerald-800"
+            className="mt-4 rounded-lg bg-brand-50 px-3.5 py-3 text-sm text-brand-800"
           >
             {successMessage}
           </p>

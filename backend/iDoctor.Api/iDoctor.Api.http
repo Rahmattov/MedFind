@@ -1,6 +1,56 @@
 @iDoctor.Api_HostAddress = http://localhost:5195
+@api = {{iDoctor.Api_HostAddress}}/api
+@doctorId = replace-with-a-doctor-guid-from-search
+@clinicId = 1
+@patientToken = replace-with-a-patient-access-token
+@appointmentDate = 2026-10-26
 
 GET {{iDoctor.Api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+### Find doctors and copy a doctor GUID for the availability request
+GET {{api}}/doctors?page=1&pageSize=10
+Accept: application/json
+
+###
+
+### Check available appointment times, then copy a clinicId and startTime from the response
+GET {{api}}/appointments/availability?doctorId={{doctorId}}&date={{appointmentDate}}
+Accept: application/json
+
+###
+
+### Create an appointment for the authenticated patient
+POST {{api}}/appointments
+Authorization: Bearer {{patientToken}}
+Content-Type: application/json
+
+{
+  "doctorId": "{{doctorId}}",
+  "clinicId": {{clinicId}},
+  "date": "{{appointmentDate}}",
+  "startTime": "09:00:00",
+  "reason": "Consultation"
+}
+
+###
+
+### List the authenticated patient's appointments
+GET {{api}}/appointments/me
+Authorization: Bearer {{patientToken}}
+Accept: application/json
+
+###
+
+### Get one appointment belonging to the authenticated patient
+GET {{api}}/appointments/1
+Authorization: Bearer {{patientToken}}
+Accept: application/json
+
+###
+
+### Cancel a future pending or confirmed appointment
+PATCH {{api}}/appointments/1/cancel
+Authorization: Bearer {{patientToken}}

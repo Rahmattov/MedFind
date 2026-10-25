@@ -7,7 +7,7 @@ export default function DoctorCard({ doctor }) {
 
   return (
     <article className="group overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
-      <div className="h-2 bg-gradient-to-r from-brand-900 via-teal-700 to-teal-400" />
+      <div className="h-2 bg-gradient-to-r from-brand-900 via-brand-600 to-brand-400" />
 
       <div className="p-6">
         <div className="flex items-start gap-4">
@@ -16,7 +16,7 @@ export default function DoctorCard({ doctor }) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+            <span className="inline-flex rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
               Специалист
             </span>
 
@@ -31,7 +31,7 @@ export default function DoctorCard({ doctor }) {
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-stone-50 p-3">
+          <div className="rounded-2xl bg-sand p-3">
             <p className="text-xs text-slate-500">Опыт работы</p>
             <p className="mt-1 font-semibold text-slate-800">
               {doctor.experience != null
@@ -40,7 +40,7 @@ export default function DoctorCard({ doctor }) {
             </p>
           </div>
 
-          <div className="rounded-2xl bg-stone-50 p-3">
+          <div className="rounded-2xl bg-sand p-3">
             <p className="text-xs text-slate-500">Рейтинг</p>
             <p className="mt-1 font-semibold text-slate-800">
               {Number.isFinite(rating) && rating > 0

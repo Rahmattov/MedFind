@@ -123,8 +123,34 @@ export default function Register() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-80px)] max-w-xl items-center px-6 py-12">
-      <div className="w-full rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
+    <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-10 md:grid-cols-[1fr_480px] md:py-14">
+      <section>
+        <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800">
+          <span className="h-2 w-2 rounded-full bg-brand-500" />
+          Забота о здоровье начинается здесь
+        </p>
+        <h1 className="font-display text-4xl font-bold leading-tight text-brand-900 lg:text-5xl">
+          Присоединяйтесь к MedFind
+        </h1>
+        <p className="mt-5 max-w-lg leading-7 text-slate-600">
+          Создайте профиль пациента или врача, чтобы находить специалистов и
+          управлять медицинской информацией в одном месте.
+        </p>
+        <div className="mt-8 space-y-3">
+          {["Удобный поиск специалистов", "Подробные профили врачей", "Личный кабинет"].map(
+            (item) => (
+              <p key={item} className="flex items-center gap-3 text-sm text-slate-600">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+                  ✓
+                </span>
+                {item}
+              </p>
+            ),
+          )}
+        </div>
+      </section>
+
+      <div className="w-full rounded-3xl border border-stone-200 bg-white p-6 shadow-soft sm:p-8">
         <div className="mb-6 text-center">
           <h1 className="font-display text-3xl text-brand-900">
             Create an account
@@ -144,7 +170,7 @@ export default function Register() {
             className={`rounded-xl border px-4 py-3 font-medium ${
               role === "patient"
                 ? "border-brand-900 bg-brand-900 text-white"
-                : "border-stone-200 text-slate-700"
+                : "border-stone-200 bg-sand text-slate-700 transition hover:border-brand-300"
             }`}
           >
             Patient
@@ -159,7 +185,7 @@ export default function Register() {
             className={`rounded-xl border px-4 py-3 font-medium ${
               role === "doctor"
                 ? "border-brand-900 bg-brand-900 text-white"
-                : "border-stone-200 text-slate-700"
+                : "border-stone-200 bg-sand text-slate-700 transition hover:border-brand-300"
             }`}
           >
             Doctor

@@ -20,20 +20,20 @@ export default function Home() {
   ];
 
   return (
-    <div className="bg-stone-50 pb-16">
+    <div className="bg-sand pb-16">
       {/* Hero */}
       <section className="overflow-hidden bg-white">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-14 md:grid-cols-[1.1fr_0.9fr] md:py-20">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800">
+              <span className="h-2 w-2 rounded-full bg-brand-500" />
               Забота о здоровье начинается здесь
             </span>
 
             <h1 className="mt-6 font-display text-4xl font-bold leading-tight text-brand-900 md:text-6xl">
               Найдите врача,
               <br />
-              <span className="text-teal-700">которому доверяете</span>
+              <span className="text-brand-600">которому доверяете</span>
             </h1>
 
             <p className="mt-5 max-w-xl text-base leading-8 text-slate-600 md:text-lg">
@@ -51,7 +51,7 @@ export default function Home() {
 
               <a
                 href="#featured-doctors"
-                className="rounded-xl border border-stone-200 bg-white px-6 py-3.5 font-semibold text-brand-900 transition hover:bg-stone-50"
+                className="rounded-xl border border-stone-200 bg-white px-6 py-3.5 font-semibold text-brand-900 transition hover:bg-sand"
               >
                 Популярные врачи
               </a>
@@ -65,11 +65,11 @@ export default function Home() {
           </div>
 
           <div className="relative mx-auto w-full max-w-md">
-            <div className="absolute inset-5 rounded-full bg-teal-100 blur-3xl" />
-            <div className="relative rounded-[2rem] border border-stone-200 bg-gradient-to-br from-teal-50 to-white p-6 sm:p-9">
+            <div className="absolute inset-5 rounded-full bg-brand-100 blur-3xl" />
+            <div className="relative rounded-[2rem] border border-stone-200 bg-gradient-to-br from-brand-50 to-white p-6 sm:p-9">
               <div className="rounded-3xl bg-white p-6 shadow-lg">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-50 text-3xl text-teal-800">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-3xl text-brand-700">
                     ✚
                   </div>
                   <div>
@@ -88,7 +88,7 @@ export default function Home() {
                   ].map(([number, label]) => (
                     <div
                       key={number}
-                      className="flex items-center gap-3 rounded-2xl bg-stone-50 p-4"
+                      className="flex items-center gap-3 rounded-2xl bg-sand p-4"
                     >
                       <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-900 text-sm font-bold text-white">
                         {number}
@@ -112,7 +112,7 @@ export default function Home() {
       {/* Specialties */}
       <section className="mx-auto mt-14 max-w-6xl px-6">
         <div className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-teal-700">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
             Поиск по направлению
           </p>
           <h2 className="mt-2 font-display text-3xl font-bold text-brand-900">
@@ -125,9 +125,9 @@ export default function Home() {
             <Link
               key={specialty.name}
               to={`/search?specialty=${encodeURIComponent(specialty.name)}`}
-              className="group rounded-2xl border border-stone-200 bg-white p-5 transition hover:-translate-y-1 hover:border-teal-300 hover:shadow-md"
+              className="group rounded-2xl border border-stone-200 bg-white p-5 transition hover:-translate-y-1 hover:border-brand-300 hover:shadow-md"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-2xl font-bold text-teal-800 transition group-hover:bg-brand-900 group-hover:text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-2xl font-bold text-brand-700 transition group-hover:bg-brand-900 group-hover:text-white">
                 {specialty.icon}
               </div>
               <h3 className="mt-4 font-bold text-slate-800">
@@ -151,7 +151,7 @@ export default function Home() {
       >
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-teal-700">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
               Наши специалисты
             </p>
             <h2 className="mt-2 font-display text-3xl font-bold text-brand-900">
@@ -197,7 +197,7 @@ export default function Home() {
       {/* How it works */}
       <section className="mx-auto mt-16 max-w-6xl px-6">
         <div className="rounded-3xl bg-brand-900 p-7 text-white sm:p-10">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-teal-200">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-200">
             Просто и удобно
           </p>
           <h2 className="mt-2 font-display text-3xl font-bold">
@@ -226,7 +226,7 @@ export default function Home() {
                 key={step.number}
                 className="rounded-2xl border border-white/15 bg-white/5 p-5"
               >
-                <span className="text-sm font-bold text-teal-200">
+                <span className="text-sm font-bold text-brand-200">
                   {step.number}
                 </span>
                 <h3 className="mt-3 text-lg font-bold">{step.title}</h3>
@@ -239,7 +239,7 @@ export default function Home() {
 
           <Link
             to="/search"
-            className="mt-8 inline-flex rounded-xl bg-white px-6 py-3.5 font-semibold text-brand-900 transition hover:bg-teal-50"
+            className="mt-8 inline-flex rounded-xl bg-white px-6 py-3.5 font-semibold text-brand-900 transition hover:bg-brand-50"
           >
             Найти своего врача →
           </Link>
@@ -256,11 +256,11 @@ function DoctorPreview({ doctor }) {
 
   return (
     <article className="group overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
-      <div className="h-1.5 bg-gradient-to-r from-brand-900 via-teal-700 to-teal-400" />
+      <div className="h-1.5 bg-gradient-to-r from-brand-900 via-brand-600 to-brand-400" />
 
       <div className="p-5">
         <div className="flex items-start gap-3">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-xl font-bold text-brand-900 ring-1 ring-teal-100">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-xl font-bold text-brand-900 ring-1 ring-brand-100">
             {initials(name)}
           </div>
 
@@ -275,7 +275,7 @@ function DoctorPreview({ doctor }) {
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-stone-50 p-3">
+          <div className="rounded-xl bg-sand p-3">
             <p className="text-xs text-slate-500">Стаж</p>
             <p className="mt-1 text-sm font-semibold text-slate-800">
               {doctor.experience != null
@@ -283,7 +283,7 @@ function DoctorPreview({ doctor }) {
                 : "Не указан"}
             </p>
           </div>
-          <div className="rounded-xl bg-stone-50 p-3">
+          <div className="rounded-xl bg-sand p-3">
             <p className="text-xs text-slate-500">Рейтинг</p>
             <p className="mt-1 text-sm font-semibold text-slate-800">
               {Number.isFinite(rating) && rating > 0

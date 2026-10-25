@@ -121,7 +121,7 @@ export default function DoctorSearch() {
                 setPage(1);
               }}
               placeholder="Например: терапевт или Иван"
-              className="w-full rounded-xl border border-stone-300 px-4 py-3 text-sm outline-none transition focus:border-brand-900 focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded-xl border border-stone-200 bg-sand px-4 py-3 text-sm outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
             />
           </div>
 
@@ -137,7 +137,7 @@ export default function DoctorSearch() {
               id="specialty"
               value={specialty}
               onChange={(event) => updateSpecialty(event.target.value)}
-              className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-900 focus:ring-2 focus:ring-brand-100"
+              className="w-full rounded-xl border border-stone-200 bg-sand px-4 py-3 text-sm outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
             >
               <option value="">Все специальности</option>
               {specialties.map((item) => (

@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { createAppointment, getAppointmentAvailability } from "../api/appointments";
 import { getDoctor } from "../api/doctors";
+import { useAuth } from "../auth/AuthContext";
 
 export default function DoctorProfile() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { patient } = useAuth();
   const [doctor, setDoctor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -12,6 +16,41 @@ export default function DoctorProfile() {
   const [time, setTime] = useState("");
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
+  const [availability, setAvailability] = useState([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!date || !doctor?.id) {
+      setAvailability([]);
+      setAvailabilityError("");
+      return undefined;
+    }
+
+    let active = true;
+    const controller = new AbortController();
+    setAvailabilityLoading(true);
+    setAvailabilityError("");
+
+    getAppointmentAvailability(doctor.id, date, { signal: controller.signal })
+      .then((slots) => {
+        if (active) setAvailability(slots);
+      })
+      .catch((error) => {
+        if (active && error.name !== "AbortError") {
+          setAvailabilityError(error.message);
+        }
+      })
+      .finally(() => {
+        if (active) setAvailabilityLoading(false);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [date, doctor?.id]);
 
   useEffect(() => {
     let active = true;
@@ -58,31 +97,59 @@ export default function DoctorProfile() {
   const price = Number(doctor.price);
   const rating = Number(doctor.rating);
 
-  function handleBooking(event) {
+  async function handleBooking(event) {
     event.preventDefault();
     setMessage("");
 
-    if (!date || !time) {
-      setMessage("Выберите дату и удобное время.");
+    if (!patient) {
+      setMessage("Чтобы записаться на приём, сначала войдите в аккаунт.");
       return;
     }
 
-    setMessage(
-      "Форма заполнена. Для подтверждения записи необходимо подключить API записи к backend."
+    const selectedSlot = availability.find(
+      (slot) => `${slot.clinicId}|${slot.startTime}` === time,
     );
+    if (!date || !selectedSlot) {
+      setMessage("Выберите дату и доступное время приёма.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createAppointment({
+        doctorId: doctor.id,
+        clinicId: selectedSlot.clinicId,
+        date,
+        startTime: selectedSlot.startTime,
+        reason: reason.trim() || null,
+      });
+      setAvailability((current) =>
+        current.filter(
+          (slot) =>
+            slot.clinicId !== selectedSlot.clinicId ||
+            slot.startTime !== selectedSlot.startTime,
+        ),
+      );
+      setTime("");
+      setMessage("Заявка сохранена. Статус записи — ожидает подтверждения.");
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
-    <main className="min-h-screen bg-stone-50 pb-16">
-      <div className="bg-brand-900 text-white">
+    <main className="min-h-screen bg-sand pb-16">
+      <div className="border-b border-brand-100 bg-brand-50">
         <div className="mx-auto max-w-6xl px-6 py-5">
           <Link
             to="/search"
-            className="text-sm text-white/75 transition hover:text-white"
+            className="text-sm font-medium text-brand-800 transition hover:text-brand-600"
           >
             ← Все врачи
           </Link>
-          <p className="mt-5 text-sm font-medium text-teal-200">
+          <p className="mt-5 text-sm font-semibold text-brand-600">
             MEDFIND · ПРОФИЛЬ СПЕЦИАЛИСТА
           </p>
         </div>
@@ -96,7 +163,7 @@ export default function DoctorProfile() {
             </div>
 
             <div className="min-w-0 flex-1">
-              <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+              <span className="inline-flex rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
                 Профиль врача
               </span>
 
@@ -115,7 +182,7 @@ export default function DoctorProfile() {
               )}
             </div>
 
-            <div className="rounded-2xl bg-stone-50 p-5 sm:min-w-48">
+            <div className="rounded-2xl bg-sand p-5 sm:min-w-48">
               <p className="text-sm text-slate-500">Стоимость приёма</p>
               <p className="mt-1 text-2xl font-bold text-brand-900">
                 {Number.isFinite(price) && price > 0
@@ -186,7 +253,7 @@ export default function DoctorProfile() {
             id="booking"
             className="scroll-mt-8 rounded-3xl border border-stone-200 bg-white p-6 shadow-sm lg:sticky lg:top-24"
           >
-            <p className="text-sm font-semibold uppercase tracking-wider text-teal-700">
+            <p className="text-sm font-semibold uppercase tracking-wider text-brand-600">
               Запись на приём
             </p>
 
@@ -211,8 +278,12 @@ export default function DoctorProfile() {
                   type="date"
                   min={getToday()}
                   value={date}
-                  onChange={(event) => setDate(event.target.value)}
-                  className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-slate-700 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                  onChange={(event) => {
+                    setDate(event.target.value);
+                    setTime("");
+                    setMessage("");
+                  }}
+                  className="w-full rounded-xl border border-stone-200 bg-sand px-4 py-3 text-slate-700 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
                   required
                 />
               </div>
@@ -228,20 +299,31 @@ export default function DoctorProfile() {
                   id="booking-time"
                   value={time}
                   onChange={(event) => setTime(event.target.value)}
-                  className="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-slate-700 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                  disabled={!date || availabilityLoading || availability.length === 0}
+                  className="w-full rounded-xl border border-stone-200 bg-sand px-4 py-3 text-slate-700 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
                   required
                 >
                   <option value="">Выберите время</option>
-                  {["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00"].map(
-                    (slot) => (
-                      <option key={slot} value={slot}>
-                        {slot}
-                      </option>
-                    )
-                  )}
+                  {availability.map((slot) => (
+                    <option
+                      key={`${slot.clinicId}-${slot.startTime}`}
+                      value={`${slot.clinicId}|${slot.startTime}`}
+                    >
+                      {formatTime(slot.startTime)}–{formatTime(slot.endTime)}
+                      {availability.length > 1 ? ` · ${slot.clinicName}` : ""}
+                    </option>
+                  ))}
                 </select>
                 <p className="mt-2 text-xs text-slate-400">
-                  Время пока демонстрационное — доступность расписания ещё не подключена.
+                  {!date
+                    ? "Сначала выберите дату, чтобы посмотреть свободное время."
+                    : availabilityLoading
+                      ? "Проверяем расписание..."
+                      : availabilityError
+                        ? availabilityError
+                        : availability.length === 0
+                          ? "На эту дату нет свободного времени."
+                          : "Время подтверждается клиникой после отправки заявки."}
                 </p>
               </div>
 
@@ -258,14 +340,18 @@ export default function DoctorProfile() {
                   onChange={(event) => setReason(event.target.value)}
                   placeholder="Кратко опишите, что вас беспокоит (необязательно)"
                   rows={3}
-                  className="w-full resize-y rounded-xl border border-stone-200 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                  className="w-full resize-y rounded-xl border border-stone-200 bg-sand px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
                 />
               </div>
 
               {message && (
                 <p
                   role="status"
-                  className="rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-800"
+                  className={`rounded-xl p-3 text-sm leading-6 ${
+                    message.startsWith("Заявка сохранена")
+                      ? "bg-brand-50 text-brand-800"
+                      : "bg-amber-50 text-amber-800"
+                  }`}
                 >
                   {message}
                 </p>
@@ -273,14 +359,36 @@ export default function DoctorProfile() {
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-brand-900 px-5 py-3.5 font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                disabled={submitting || availabilityLoading || availability.length === 0}
+                className="w-full rounded-xl bg-brand-900 px-5 py-3.5 font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Подготовить заявку →
+                {submitting ? "Сохраняем запись..." : "Записаться на приём →"}
               </button>
 
               <p className="text-center text-xs leading-5 text-slate-400">
-                Отправка и подтверждение записи появятся после подключения API.
+                Запись сохранится в вашем профиле после отправки.
               </p>
+              {!patient && (
+                <p className="text-center text-sm text-slate-500">
+                  <Link to="/login" className="font-semibold text-brand-700 hover:underline">
+                    Войдите в аккаунт
+                  </Link>{" "}
+                  или{" "}
+                  <Link to="/register" className="font-semibold text-brand-700 hover:underline">
+                    зарегистрируйтесь
+                  </Link>
+                  , чтобы записаться.
+                </p>
+              )}
+              {message.startsWith("Заявка сохранена") && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/profile")}
+                  className="w-full text-sm font-semibold text-brand-700 hover:underline"
+                >
+                  Перейти в профиль и посмотреть запись
+                </button>
+              )}
             </form>
           </aside>
         </div>
@@ -291,7 +399,7 @@ export default function DoctorProfile() {
 
 function InfoCard({ icon, label, value }) {
   return (
-    <div className="flex gap-3 rounded-2xl bg-stone-50 p-4">
+    <div className="flex gap-3 rounded-2xl bg-sand p-4">
       <span className="text-xl" aria-hidden="true">{icon}</span>
       <div className="min-w-0">
         <p className="text-xs text-slate-500">{label}</p>
@@ -317,4 +425,8 @@ function getToday() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function formatTime(value) {
+  return value.slice(0, 5);
 }

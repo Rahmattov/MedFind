@@ -71,7 +71,7 @@ public class DataSeeder : IHostedService
         }
         await db.SaveChangesAsync(cancellationToken);
 
-                // Starter clinics (placeholder data, replace with real clinics later)
+        // Starter clinics (placeholder data, replace with real clinics later)
         if (!await db.Clinics.AnyAsync(cancellationToken))
         {
             var dushanbe = await db.Cities.FirstOrDefaultAsync(c => c.Name == "Dushanbe", cancellationToken);
@@ -276,6 +276,47 @@ public class DataSeeder : IHostedService
                 Specialties = new List<Specialty> { specialty },
                 Clinics = new List<Clinic> { clinic }
             });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        var developmentDoctorIds = await db.Doctors
+            .Where(doctor => doctors.Select(sample => sample.Email).Contains(doctor.User.Email!))
+            .Select(doctor => doctor.UserId)
+            .ToListAsync(cancellationToken);
+        var existingHours = await db.DoctorWorkingHours
+            .Where(hours => developmentDoctorIds.Contains(hours.DoctorId))
+            .Select(hours => new { hours.DoctorId, hours.ClinicId, hours.DayOfWeek })
+            .ToListAsync(cancellationToken);
+        var configuredHours = existingHours
+            .Select(hours => (hours.DoctorId, hours.ClinicId, hours.DayOfWeek))
+            .ToHashSet();
+        var developmentDoctors = await db.Doctors
+            .Where(doctor => developmentDoctorIds.Contains(doctor.UserId))
+            .SelectMany(doctor => doctor.Clinics.Select(clinic => new
+            {
+                doctor.UserId,
+                ClinicId = clinic.Id
+            }))
+            .ToListAsync(cancellationToken);
+
+        foreach (var doctorClinic in developmentDoctors)
+        {
+            for (short dayOfWeek = 1; dayOfWeek <= 5; dayOfWeek++)
+            {
+                if (configuredHours.Contains((doctorClinic.UserId, doctorClinic.ClinicId, dayOfWeek)))
+                    continue;
+
+                db.DoctorWorkingHours.Add(new DoctorWorkingHours
+                {
+                    DoctorId = doctorClinic.UserId,
+                    ClinicId = doctorClinic.ClinicId,
+                    DayOfWeek = dayOfWeek,
+                    StartTime = new TimeOnly(9, 0),
+                    EndTime = new TimeOnly(17, 0),
+                    SlotDurationMinutes = 30
+                });
+            }
         }
 
         await db.SaveChangesAsync(cancellationToken);

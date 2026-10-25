@@ -108,7 +108,7 @@ export default function Dashboard() {
             <span
               className={`rounded-full px-3 py-1 text-sm font-semibold ${
                 verified
-                  ? "bg-green-100 text-green-800"
+                  ? "bg-brand-100 text-brand-800"
                   : "bg-amber-100 text-amber-800"
               }`}
             >
@@ -230,6 +230,7 @@ export default function Dashboard() {
           title="My Appointments"
           description="View your upcoming and previous appointments."
           button="View appointments"
+          link="/profile"
         />
 
         <DashboardCard
