@@ -229,8 +229,7 @@ namespace iDoctor.Infrastructure.Data.Migrations
 
                     b.HasIndex("PatientId");
 
-                    b.HasIndex("SlotId")
-                        .IsUnique();
+                    b.HasIndex("SlotId");
 
                     b.HasIndex("Status");
 
@@ -655,8 +654,8 @@ namespace iDoctor.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.HasOne("iDoctor.Domain.Entities.AppointmentSlot", "Slot")
-                        .WithOne("Appointment")
-                        .HasForeignKey("iDoctor.Domain.Entities.Appointment", "SlotId")
+                        .WithMany("Appointments")
+                        .HasForeignKey("SlotId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -748,7 +747,7 @@ namespace iDoctor.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("iDoctor.Domain.Entities.AppointmentSlot", b =>
                 {
-                    b.Navigation("Appointment");
+                    b.Navigation("Appointments");
                 });
 
             modelBuilder.Entity("iDoctor.Domain.Entities.City", b =>

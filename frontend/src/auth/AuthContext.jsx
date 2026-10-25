@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { ACCESS_TOKEN_KEY, USER_KEY, apiRequest } from "../api/client";
 
 const AuthContext = createContext(null);
-const TOKEN_KEY = "medfind_access_token";
-const USER_KEY = "medfind_patient";
+const TOKEN_KEY = ACCESS_TOKEN_KEY;
 const MOCK_ACCOUNTS_KEY = "medfind_mock_accounts";
 const MOCK_SESSION_KEY = "medfind_mock_session";
 export const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === "true";
@@ -56,10 +56,31 @@ function mockAccountError(message) {
 
 function getUser(payload) {
   const data = payload?.data ?? payload;
-  const user = data?.patient ?? data?.user ?? data;
-  return user && (user.id || user.email || user.firstName || user.name)
-    ? user
-    : null;
+  const user = data?.user ?? data?.patient ?? data;
+  if (
+    !user ||
+    !(user.id || user.email || user.firstName || user.name || user.fullName)
+  ) {
+    return null;
+  }
+
+  const fullName = user.fullName ?? user.name ?? "";
+  const [firstName = "", ...lastNameParts] = fullName.trim().split(/\s+/);
+  const roles = Array.isArray(user.roles)
+    ? user.roles
+    : user.role || user.userType
+      ? [user.role ?? user.userType]
+      : [];
+  return {
+    ...user,
+    fullName,
+    firstName: user.firstName ?? firstName,
+    lastName: user.lastName ?? lastNameParts.join(" "),
+    name: user.name ?? fullName,
+    phone: user.phone ?? user.phoneNumber,
+    role: String(roles[0] ?? "patient").toLowerCase(),
+    roles,
+  };
 }
 
 function getToken(payload) {
@@ -67,47 +88,15 @@ function getToken(payload) {
   return data?.accessToken ?? data?.token;
 }
 
-async function apiRequest(path, options = {}) {
-  const baseUrl = (
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api"
-  ).replace(/\/$/, "");
-  const token = localStorage.getItem(TOKEN_KEY);
-  const headers = new Headers(options.headers || {});
+function isPatient(user) {
+  const roles = user?.roles ?? [user?.role];
+  return roles.some((role) => String(role).toLowerCase() === "patient");
+}
 
-  if (options.body && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-  if (token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
-  const text = await response.text();
-  let payload = null;
-
-  if (text) {
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = { message: text };
-    }
-  }
-
-  if (!response.ok) {
-    const error = new Error(
-      payload?.message ||
-        payload?.error ||
-        "Не удалось выполнить запрос. Попробуйте ещё раз.",
-    );
-    error.status = response.status;
-    throw error;
-  }
-
-  return payload;
+async function getCurrentPatient(user) {
+  if (!isPatient(user)) return user;
+  const profile = await apiRequest("/patients/me");
+  return { ...user, ...getUser(profile) };
 }
 
 function saveSession(payload, patient) {
@@ -133,11 +122,12 @@ export function AuthProvider({ children }) {
     let active = true;
 
     apiRequest("/auth/me")
-      .then((payload) => {
-        const currentPatient = getUser(payload);
+      .then(getUser)
+      .then(getCurrentPatient)
+      .then((currentPatient) => {
         if (!active) return;
         setPatient(currentPatient);
-        saveSession(payload, currentPatient);
+        saveSession(null, currentPatient);
         setAuthError("");
       })
       .catch((error) => {
@@ -164,11 +154,9 @@ export function AuthProvider({ children }) {
       method: "POST",
       body: JSON.stringify(credentials),
     });
-    let currentPatient = getUser(payload);
-
-    if (!currentPatient) {
-      currentPatient = await apiRequest("/auth/me").then(getUser);
-    }
+    const token = getToken(payload);
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    const currentPatient = await getCurrentPatient(getUser(payload));
 
     saveSession(payload, currentPatient);
     setPatient(currentPatient);
@@ -199,7 +187,7 @@ export function AuthProvider({ children }) {
           firstName: details.firstName.trim(),
           lastName: details.lastName.trim(),
           email,
-          phone: details.phone.trim(),
+          phone: (details.phone ?? details.phoneNumber ?? "").trim(),
           dateOfBirth: details.dateOfBirth || "",
           gender: details.gender || "",
           address: details.address || "",
@@ -214,7 +202,31 @@ export function AuthProvider({ children }) {
       return account.patient;
     }
 
-    return authenticate("/auth/register", { ...details, role: "patient" });
+    return authenticate("/auth/register/patient", {
+      fullName: `${details.firstName.trim()} ${details.lastName.trim()}`.trim(),
+      email: details.email.trim(),
+      phoneNumber: (details.phone ?? details.phoneNumber ?? "").trim(),
+      password: details.password,
+    });
+  }
+
+  async function registerDoctor(details) {
+    if (USE_MOCK_AUTH) {
+      throw mockAccountError(
+        "Регистрация врача недоступна в демо-режиме. Временно можно зарегистрировать аккаунт пациента.",
+      );
+    }
+
+    return authenticate("/auth/register/doctor", {
+      fullName: `${details.firstName?.trim() ?? ""} ${details.lastName?.trim() ?? ""}`.trim(),
+      email: details.email.trim(),
+      phoneNumber: (details.phoneNumber ?? details.phone ?? "").trim(),
+      password: details.password,
+      bio: details.bio ?? "",
+      experienceYears: Number(details.experienceYears ?? 0),
+      consultationPrice: details.consultationPrice,
+      specialtyIds: details.specialtyIds,
+    });
   }
 
   async function login(credentials) {
@@ -261,9 +273,8 @@ export function AuthProvider({ children }) {
       return account.patient;
     }
 
-    const payload = await apiRequest("/auth/me");
-    const currentPatient = getUser(payload);
-    saveSession(payload, currentPatient);
+    const currentPatient = getUser(await apiRequest("/patients/me"));
+    saveSession(null, currentPatient);
     setPatient(currentPatient);
     setAuthError("");
     return currentPatient;
@@ -276,11 +287,6 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    try {
-      await apiRequest("/auth/logout", { method: "POST" });
-    } catch {
-      // Clear the local session even when the API logout endpoint is unavailable.
-    }
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setPatient(null);
@@ -293,6 +299,7 @@ export function AuthProvider({ children }) {
         loading,
         authError,
         register,
+        registerDoctor,
         login,
         logout,
         refreshProfile,

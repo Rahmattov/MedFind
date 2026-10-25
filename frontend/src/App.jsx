@@ -31,7 +31,7 @@ export default function App() {
 
           <Route path="/login" element={<PatientLogin />} />
 
-          <Route path="/register" element={<PatientRegister />} />
+          <Route path="/register" element={<Register />} />
 
           <Route
             path="/profile"

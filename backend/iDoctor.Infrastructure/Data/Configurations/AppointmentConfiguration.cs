@@ -19,10 +19,10 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
         builder.Property(a => a.CancelReason).HasMaxLength(500);
 
         builder.HasOne(a => a.Slot)
-            .WithOne(s => s.Appointment)
-            .HasForeignKey<Appointment>(a => a.SlotId)
+            .WithMany(s => s.Appointments)
+            .HasForeignKey(nameof(Appointment.SlotId))
             .OnDelete(DeleteBehavior.Restrict);
-        builder.HasIndex(a => a.SlotId).IsUnique();
+        builder.HasIndex(a => a.SlotId);
 
         builder.HasOne(a => a.Patient)
             .WithMany(p => p.Appointments)
