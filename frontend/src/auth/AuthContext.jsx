@@ -56,7 +56,7 @@ function mockAccountError(message) {
 
 function getUser(payload) {
   const data = payload?.data ?? payload;
-  const user = data?.patient ?? data?.user ?? data;
+  const user = data?.user ?? data?.patient ?? data;
   if (
     !user ||
     !(user.id || user.email || user.firstName || user.name || user.fullName)
@@ -66,6 +66,11 @@ function getUser(payload) {
 
   const fullName = user.fullName ?? user.name ?? "";
   const [firstName = "", ...lastNameParts] = fullName.trim().split(/\s+/);
+  const roles = Array.isArray(user.roles)
+    ? user.roles
+    : user.role || user.userType
+      ? [user.role ?? user.userType]
+      : [];
   return {
     ...user,
     fullName,
@@ -73,6 +78,8 @@ function getUser(payload) {
     lastName: user.lastName ?? lastNameParts.join(" "),
     name: user.name ?? fullName,
     phone: user.phone ?? user.phoneNumber,
+    role: String(roles[0] ?? "patient").toLowerCase(),
+    roles,
   };
 }
 
@@ -82,7 +89,8 @@ function getToken(payload) {
 }
 
 function isPatient(user) {
-  return user?.roles?.some((role) => role.toLowerCase() === "patient") ?? false;
+  const roles = user?.roles ?? [user?.role];
+  return roles.some((role) => String(role).toLowerCase() === "patient");
 }
 
 async function getCurrentPatient(user) {
@@ -202,6 +210,19 @@ export function AuthProvider({ children }) {
     });
   }
 
+  async function registerDoctor(details) {
+    return authenticate("/auth/register/doctor", {
+      fullName: `${details.firstName?.trim() ?? ""} ${details.lastName?.trim() ?? ""}`.trim(),
+      email: details.email.trim(),
+      phoneNumber: (details.phoneNumber ?? details.phone ?? "").trim(),
+      password: details.password,
+      bio: details.bio ?? "",
+      experienceYears: Number(details.experienceYears ?? 0),
+      consultationPrice: details.consultationPrice,
+      specialtyIds: details.specialtyIds,
+    });
+  }
+
   async function login(credentials) {
     if (USE_MOCK_AUTH) {
       const email = credentials.email.trim().toLowerCase();
@@ -247,7 +268,7 @@ export function AuthProvider({ children }) {
     }
 
     const currentPatient = getUser(await apiRequest("/patients/me"));
-    saveSession(payload, currentPatient);
+    saveSession(null, currentPatient);
     setPatient(currentPatient);
     setAuthError("");
     return currentPatient;
@@ -272,6 +293,7 @@ export function AuthProvider({ children }) {
         loading,
         authError,
         register,
+        registerDoctor,
         login,
         logout,
         refreshProfile,

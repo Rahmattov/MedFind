@@ -7,7 +7,7 @@ export default function DoctorSearch() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [specialty, setSpecialty] = useState(
-    searchParams.get("specialtyId") || "",
+    searchParams.get("specialtyId") || searchParams.get("specialty") || "",
   );
   const [specialties, setSpecialties] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -31,6 +31,18 @@ export default function DoctorSearch() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const requested = searchParams.get("specialty");
+    if (!requested || specialties.length === 0) return;
+    const match = specialties.find(
+      (item) => getSpecialtyLabel(item).toLowerCase() === requested.toLowerCase(),
+    );
+    if (match) {
+      setSpecialty(String(match.id));
+      setSearchParams({ specialtyId: String(match.id) }, { replace: true });
+    }
+  }, [searchParams, setSearchParams, specialties]);
 
   useEffect(() => {
     let active = true;
