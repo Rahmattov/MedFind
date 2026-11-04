@@ -24,7 +24,8 @@ public class SpecialtyRequest
 
 // ---- Clinics ----
 public record ClinicDto(int Id, string Name, int? CityId, string? CityName, string? Address,
-                        string? Phone, string? Description, bool IsActive, int DoctorsCount);
+                        string? Phone, string? Description, bool IsActive, int DoctorsCount,
+                        string? PhotoUrl);
 
 public class ClinicRequest
 {

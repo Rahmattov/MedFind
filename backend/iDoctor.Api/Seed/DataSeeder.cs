@@ -27,32 +27,71 @@ public class DataSeeder : IHostedService
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
 
         // Roles
-        foreach (var role in new[] { Roles.Patient, Roles.Doctor, Roles.Admin })
-        {
-            if (!await roleManager.RoleExistsAsync(role))
-                await roleManager.CreateAsync(new ApplicationRole { Id = Guid.NewGuid(), Name = role });
+        foreach (var role in new[]
+            {
+                Roles.Patient,
+                Roles.Doctor,
+                Roles.Admin,
+                Roles.ClinicManager,
+                Roles.PharmacyManager
+            })
+            {
+        if (!await roleManager.RoleExistsAsync(role))
+            {
+                await roleManager.CreateAsync(
+                    new ApplicationRole
+                    {
+                        Id = Guid.NewGuid(),
+                        Name = role
+                    });
         }
+}
 
         // Admin user
         var email = _config["Seed:AdminEmail"];
         var password = _config["Seed:AdminPassword"];
-        if (!string.IsNullOrWhiteSpace(email) && !string.IsNullOrWhiteSpace(password)
-            && await userManager.FindByEmailAsync(email) is null)
+
+        if (!string.IsNullOrWhiteSpace(email) &&
+            !string.IsNullOrWhiteSpace(password))
         {
-            var admin = new User
+            var admin = await userManager.FindByEmailAsync(email);
+
+            if (admin is null)
             {
-                Id = Guid.NewGuid(),
-                UserName = email,
-                Email = email,
-                EmailConfirmed = true,
-                PhoneNumber = _config["Seed:AdminPhone"] ?? "+992900000000",
-                FullName = "Platform Admin"
-            };
-            var result = await userManager.CreateAsync(admin, password);
-            if (!result.Succeeded)
-                throw new InvalidOperationException("Admin seed failed: " +
-                    string.Join("; ", result.Errors.Select(e => e.Description)));
-            await userManager.AddToRoleAsync(admin, Roles.Admin);
+                var phone = _config["Seed:AdminPhone"] ?? "+992900000000";
+
+                // Do not create an admin with a phone number already in use.
+                if (await userManager.Users.AnyAsync(u => u.PhoneNumber == phone))
+                {
+                    throw new InvalidOperationException(
+                        "Cannot seed admin: Seed:AdminPhone is already in use. " +
+                        "Configure a unique Seed:AdminPhone.");
+                }
+
+                admin = new User
+                {
+                    Id = Guid.NewGuid(),
+                    UserName = email,
+                    Email = email,
+                    EmailConfirmed = true,
+                    PhoneNumber = phone,
+                    FullName = "Platform Admin"
+                };
+
+                var result = await userManager.CreateAsync(admin, password);
+
+                if (!result.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        "Admin seed failed: " +
+                        string.Join("; ", result.Errors.Select(e => e.Description)));
+                }
+            }
+
+            if (!await userManager.IsInRoleAsync(admin, Roles.Admin))
+            {
+                await userManager.AddToRoleAsync(admin, Roles.Admin);
+            }
         }
 
         // Starter lookup data (so doctor registration has something to reference)

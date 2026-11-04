@@ -1,85 +1,73 @@
-import { useEffect, useState } from "react";
+
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { cancelAppointment, listMyAppointments } from "../api/appointments";
 import { useAuth } from "../auth/AuthContext";
 
 export default function PatientProfile() {
   const { patient, logout, refreshProfile, authError } = useAuth();
   const navigate = useNavigate();
+
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState("");
-  const [appointments, setAppointments] = useState([]);
-  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
-  const [cancellingAppointmentId, setCancellingAppointmentId] = useState(null);
+
   const fullName =
-    [patient?.firstName, patient?.lastName].filter(Boolean).join(" ") ||
     patient?.fullName ||
+    [patient?.firstName, patient?.lastName].filter(Boolean).join(" ") ||
     patient?.name ||
     "Пациент";
+
+  const initials =
+    fullName
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "П";
+
   const fields = [
-    ["Электронная почта", patient?.email],
-    ["Телефон", patient?.phone || patient?.phoneNumber],
-    [
-      "Дата рождения",
-      patient?.dateOfBirth
-        ? new Date(patient.dateOfBirth).toLocaleDateString("ru-RU")
-        : "",
-    ],
-    ["Пол", patient?.gender],
-    ["Город", patient?.cityName],
+    {
+      label: "Электронная почта",
+      value: patient?.email,
+      icon: "✉",
+    },
+    {
+      label: "Номер телефона",
+      value: patient?.phoneNumber || patient?.phone,
+      icon: "☎",
+    },
+    {
+      label: "Дата рождения",
+      value: formatDate(patient?.dateOfBirth),
+      icon: "▦",
+    },
+    {
+      label: "Пол",
+      value: formatGender(patient?.gender),
+      icon: "◉",
+    },
+    {
+      label: "Город",
+      value: patient?.cityName || patient?.city?.name,
+      icon: "⌖",
+    },
+    {
+      label: "Адрес",
+      value: patient?.address,
+      icon: "⌖",
+    },
   ];
-
-  useEffect(() => {
-    let active = true;
-
-    listMyAppointments()
-      .then((result) => {
-        if (active) setAppointments(result);
-      })
-      .catch((error) => {
-        if (active) setRefreshError(error.message);
-      })
-      .finally(() => {
-        if (active) setAppointmentsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   async function handleRefresh() {
     setRefreshing(true);
     setRefreshError("");
+
     try {
-      const [, updatedAppointments] = await Promise.all([
-        refreshProfile(),
-        listMyAppointments(),
-      ]);
-      setAppointments(updatedAppointments);
+      await refreshProfile();
     } catch (error) {
-      setRefreshError(error.message);
+      setRefreshError(error?.message || "Не удалось обновить данные.");
     } finally {
       setRefreshing(false);
-    }
-  }
-
-  async function handleCancelAppointment(appointment) {
-    if (!window.confirm(`Отменить запись к ${appointment.doctorName}?`)) return;
-
-    setCancellingAppointmentId(appointment.id);
-    setRefreshError("");
-    try {
-      const updatedAppointment = await cancelAppointment(appointment.id);
-      setAppointments((current) =>
-        current.map((item) =>
-          item.id === updatedAppointment.id ? updatedAppointment : item,
-        ),
-      );
-    } catch (error) {
-      setRefreshError(error.message);
-    } finally {
-      setCancellingAppointmentId(null);
     }
   }
 
@@ -89,214 +77,184 @@ export default function PatientProfile() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10 md:py-14">
-      <div className="flex flex-wrap items-end justify-between gap-5 border-b border-stone-200 pb-6">
-        <div>
-          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-accent">
-            Личный кабинет
-          </p>
-          <h1 className="font-display text-4xl text-brand-900">
-            Профиль пациента
-          </h1>
-        </div>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="rounded-lg border border-stone-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-white disabled:opacity-60"
-          >
-            {refreshing ? "Обновляем..." : "Обновить данные"}
-          </button>
+    <main className="min-h-screen bg-[#f6f8f5] px-5 py-8 sm:px-8 sm:py-12">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="mt-3 font-display text-3xl font-semibold tracking-tight text-[#173f35] sm:text-4xl">
+              Мой профиль
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+            </p>
+          </div>
+
           <button
             type="button"
             onClick={handleLogout}
-            className="rounded-lg bg-brand-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+            className="rounded-xl border border-stone-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
           >
-            Выйти
+            Выйти из аккаунта
           </button>
         </div>
-      </div>
 
-      <section className="mt-8 max-w-3xl rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex items-center gap-4 border-b border-stone-200 pb-6">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 font-display text-xl text-brand-900">
-            {fullName
-              .split(/\s+/)
-              .map((part) => part[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase()}
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold text-slate-800">{fullName}</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Данные вашего аккаунта
-            </p>
-          </div>
-        </div>
-        {authError && (
-          <p
-            role="status"
-            className="mt-5 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800"
-          >
-            Не удалось связаться с сервером. Показаны сохранённые данные.
-          </p>
-        )}
-        {refreshError && (
-          <p
-            role="alert"
-            className="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"
-          >
-            {refreshError}
-          </p>
-        )}
-        <dl className="mt-2 divide-y divide-stone-100">
-          {fields.map(([label, value]) => (
-            <div
-              key={label}
-              className="grid gap-1 py-4 sm:grid-cols-[200px_1fr] sm:gap-4"
-            >
-              <dt className="text-sm text-slate-500">{label}</dt>
-              <dd className="break-words text-sm font-medium text-slate-800">
-                {value || "Не указано"}
-              </dd>
+        <section className="relative overflow-hidden rounded-[2rem] bg-[#173f35] p-7 text-white shadow-lg sm:p-10">
+          <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full border border-white/10" />
+          <div className="pointer-events-none absolute -right-4 -top-12 h-48 w-48 rounded-full border border-white/10" />
+
+          <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl border border-white/15 bg-white/10 font-display text-3xl font-semibold text-emerald-100 shadow-inner">
+              {initials}
             </div>
-          ))}
-        </dl>
-      </section>
 
-      <section className="mt-8">
-        <div className="mb-5">
-          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand-600">
-            Ваше здоровье
-          </p>
-          <h2 className="mt-2 font-display text-3xl text-brand-900">
-            Мои записи
-          </h2>
-        </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="mt-2 break-words font-display text-3xl font-semibold tracking-tight sm:text-4xl">
+                {fullName}
+              </h2>
+              <p className="mt-2 break-words text-sm text-white/65">
+                {patient?.email || "Электронная почта не указана"}
+              </p>
+            </div>
 
-        {appointmentsLoading ? (
-          <p role="status" className="rounded-2xl border border-stone-200 bg-white p-6 text-sm text-slate-500">
-            Загружаем записи...
-          </p>
-        ) : appointments.length > 0 ? (
-          <div className="grid gap-4">
-            {appointments.map((appointment) => (
-              <AppointmentCard
-                key={appointment.id}
-                appointment={appointment}
-                cancelling={cancellingAppointmentId === appointment.id}
-                onCancel={() => handleCancelAppointment(appointment)}
-              />
-            ))}
+            <div className="flex items-center gap-2 self-start rounded-full border border-emerald-200/20 bg-emerald-200/10 px-4 py-2 text-sm font-medium text-emerald-100 sm:self-center">
+              <span className="h-2 w-2 rounded-full bg-emerald-300" />
+              Личный кабинет
+            </div>
           </div>
-        ) : (
-          <div className="rounded-2xl border border-stone-200 bg-white p-6">
-            <h3 className="font-semibold text-brand-900">Пока нет записей</h3>
-            <p className="mt-2 text-sm text-slate-500">
-              Выберите врача и отправьте заявку на приём — она появится здесь.
+        </section>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_300px]">
+          <section className="rounded-3xl border border-[#e5eae3] bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Информация, связанная с вашим профилем.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#dce7dc] bg-[#f7faf6] px-4 py-3 text-sm font-semibold text-[#245747] transition hover:bg-[#eaf2eb] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span aria-hidden="true">{refreshing ? "◌" : "↻"}</span>
+                {refreshing ? "Обновляем..." : "Обновить"}
+              </button>
+            </div>
+
+            {authError && (
+              <div
+                role="status"
+                className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4"
+              >
+                <p className="font-semibold text-amber-950">
+                  Не удалось связаться с сервером
+                </p>
+                <p className="mt-1 text-sm leading-6 text-amber-800">
+                  Показаны доступные сохранённые данные. Попробуйте обновить
+                  профиль.
+                </p>
+              </div>
+            )}
+
+            {refreshError && (
+              <div
+                role="alert"
+                className="mt-6 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm leading-6 text-red-700"
+              >
+                {refreshError}
+              </div>
+            )}
+
+            <dl className="mt-7 grid gap-4 sm:grid-cols-2">
+              {fields.map(({ label, value, icon }) => (
+                <div
+                  key={label}
+                  className="min-w-0 rounded-2xl border border-[#edf0eb] bg-[#fafbf9] p-4 transition hover:border-[#d6e4d6]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eaf2eb] text-lg text-[#245747]">
+                      {icon}
+                    </span>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      {label}
+                    </dt>
+                  </div>
+
+                  <dd className="mt-4 break-words text-sm font-semibold leading-6 text-[#263e34]">
+                    {value || "Не указано"}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <div className="self-start rounded-3xl border border-[#e5eae3] bg-white p-6 shadow-sm">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eaf2eb] text-2xl text-[#245747]">
+              ◫
+            </div>
+
+            <h3 className="mt-4 font-display text-xl font-semibold text-[#173f35]">
+              Панель управления
+            </h3>
+
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              Перейдите на страницу dashboard.
             </p>
+
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard")}
+              className="mt-5 flex w-full items-center justify-between rounded-xl bg-[#173f35] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#245747]"
+            >
+              Открыть dashboard
+              <span aria-hidden="true">↗</span>
+            </button>
           </div>
-        )}
-      </section>
-    </div>
-  );
-}
 
-function AppointmentCard({ appointment, cancelling, onCancel }) {
-  const status = getAppointmentStatus(appointment.status);
-  const canCancel = ["Pending", "Confirmed"].includes(appointment.status);
-
-  return (
-    <article className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-slate-500">
-            {formatAppointmentDate(appointment.date)}
-          </p>
-          <p className="mt-1 text-lg font-semibold text-brand-900">
-            {formatAppointmentTime(appointment.startTime)} –{" "}
-            {formatAppointmentTime(appointment.endTime)}
-          </p>
+          <div className="self-start rounded-3xl border border-[#e5eae3] bg-white p-6 shadow-sm">
+            <h3 className="mt-4 font-display text-xl font-semibold text-[#173f35]">
+              Кабинет клиники
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              Перейдите в панель управления клиникой.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate("/clinic-dashboard")}
+              className="mt-5 flex w-full items-center justify-between rounded-xl bg-[#173f35] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#245747]"
+            >
+              Открыть кабинет клиники
+            </button>
+          </div>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>
-          {status.label}
-        </span>
       </div>
-      <h3 className="mt-4 font-semibold text-slate-800">
-        {appointment.doctorName}
-      </h3>
-      <p className="mt-1 text-sm text-slate-500">{appointment.specialty}</p>
-      <p className="mt-3 text-sm text-slate-600">{appointment.clinicName}</p>
-      {appointment.clinicAddress && (
-        <p className="mt-1 text-sm text-slate-500">{appointment.clinicAddress}</p>
-      )}
-      {appointment.reason && (
-        <p className="mt-3 border-t border-stone-100 pt-3 text-sm text-slate-600">
-          Причина обращения: {appointment.reason}
-        </p>
-      )}
-      {canCancel && (
-        <div className="mt-4 border-t border-stone-100 pt-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={cancelling}
-            className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-wait disabled:opacity-60"
-          >
-            {cancelling ? "Отменяем..." : "Отменить запись"}
-          </button>
-        </div>
-      )}
-    </article>
+    </main>
   );
 }
 
-function formatAppointmentDate(value) {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString("ru-RU", {
-    weekday: "short",
+function formatDate(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
     month: "long",
     year: "numeric",
-  });
+    timeZone: "UTC",
+  }).format(date);
 }
 
-function formatAppointmentTime(value) {
-  return value.slice(0, 5);
-}
+function formatGender(value) {
+  if (!value) return "";
 
-function getAppointmentStatus(value) {
-  const statuses = {
-    Pending: {
-      label: "Ожидает подтверждения",
-      className: "bg-amber-50 text-amber-800",
-    },
-    Confirmed: {
-      label: "Подтверждена",
-      className: "bg-brand-50 text-brand-800",
-    },
-    Completed: {
-      label: "Завершена",
-      className: "bg-slate-100 text-slate-700",
-    },
-    CancelledByPatient: {
-      label: "Отменена пациентом",
-      className: "bg-red-50 text-red-700",
-    },
-    CancelledByDoctor: {
-      label: "Отменена врачом",
-      className: "bg-red-50 text-red-700",
-    },
-    NoShow: {
-      label: "Неявка",
-      className: "bg-slate-100 text-slate-700",
-    },
-  };
+  const normalized = String(value).toLowerCase();
 
-  return statuses[value] ?? {
-    label: value,
-    className: "bg-slate-100 text-slate-700",
-  };
+  if (normalized === "male") return "Мужской";
+  if (normalized === "female") return "Женский";
+
+  return value;
 }

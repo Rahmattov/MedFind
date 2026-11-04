@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using iDoctor.Domain.Entities;
 
+
 namespace iDoctor.Infrastructure.Data;
 
 public class ApplicationDbContext : IdentityDbContext<User, ApplicationRole, Guid>
@@ -13,8 +14,11 @@ public class ApplicationDbContext : IdentityDbContext<User, ApplicationRole, Gui
     // Users and Roles DbSets are inherited from IdentityDbContext
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<Doctor> Doctors => Set<Doctor>();
+    public DbSet<DoctorReview> DoctorReviews => Set<DoctorReview>();
     public DbSet<Specialty> Specialties => Set<Specialty>();
     public DbSet<Clinic> Clinics => Set<Clinic>();
+    public DbSet<Pharmacy> Pharmacies => Set<Pharmacy>();
+    public DbSet<Medicine> Medicines => Set<Medicine>();
     public DbSet<City> Cities => Set<City>();
     public DbSet<DoctorWorkingHours> DoctorWorkingHours => Set<DoctorWorkingHours>();
     public DbSet<AppointmentSlot> AppointmentSlots => Set<AppointmentSlot>();
@@ -24,6 +28,12 @@ public class ApplicationDbContext : IdentityDbContext<User, ApplicationRole, Gui
     {
         // Identity's mappings must come FIRST so our configs can override them
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<User>()
+            .HasOne(u => u.ManagedPharmacy)
+            .WithMany()
+            .HasForeignKey(u => u.ManagedPharmacyId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
         // Give Identity's tables names consistent with the rest of the schema

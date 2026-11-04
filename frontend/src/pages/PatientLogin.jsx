@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -6,8 +7,14 @@ export default function PatientLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
   const successMessage = location.state?.message;
-  const [form, setForm] = useState({ email: "", password: "" });
+
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -15,6 +22,7 @@ export default function PatientLogin() {
     event.preventDefault();
     setError("");
     setSubmitting(true);
+
     try {
       await login(form);
       navigate(location.state?.from || "/profile", { replace: true });
@@ -26,89 +34,103 @@ export default function PatientLogin() {
   }
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-12 px-6 py-12 md:grid-cols-[1fr_420px] md:items-center md:py-20">
-      <div>
-        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-accent">
-          Личный кабинет пациента
-        </p>
-        <h1 className="font-display text-4xl leading-tight text-brand-900 md:text-5xl">
-          Рады видеть вас снова
-        </h1>
-        <p className="mt-5 max-w-lg leading-7 text-slate-600">
-          Войдите, чтобы открыть свой профиль и продолжить пользоваться MedFind.
-        </p>
-      </div>
+    <main className="flex min-h-[80vh] items-center justify-center bg-slate-50 px-5 py-16">
+      <div className="w-full max-w-md">
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-2xl border border-slate-200 bg-white p-7 shadow-xl shadow-slate-200/50 sm:p-9"
+        >
+          <h2 className="text-[23px] font-bold text-slate-900 ml-25">
+            Вход в аккаунт
+          </h2>
 
-      <form
-        onSubmit={handleSubmit}
-        className="rounded-2xl border border-stone-200 bg-white p-6 shadow-soft sm:p-8"
-      >
-        <h2 className="font-display text-2xl text-brand-900">Вход</h2>
-        {successMessage && (
-          <p
-            role="status"
-            className="mt-4 rounded-lg bg-brand-50 px-3.5 py-3 text-sm text-brand-800"
+          {successMessage && (
+            <p
+              role="status"
+              className="mt-5 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            >
+              {successMessage}
+            </p>
+          )}
+
+          <div className="mt-6">
+            <label
+              htmlFor="email"
+              className="mb-2 block text-sm font-semibold text-slate-700 mt-10"
+            >
+              Электронная почта
+            </label>
+
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="example@email.com"
+              required
+              value={form.email}
+              onChange={(event) =>
+                setForm({ ...form, email: event.target.value })
+              }
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-cyan-700 focus:bg-white focus:ring-4 focus:ring-cyan-700/10"
+            />
+          </div>
+
+          <div className="mt-5">
+            <label
+              htmlFor="password"
+              className="mb-2 block text-sm font-semibold text-slate-700"
+            >
+              Пароль
+            </label>
+
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Введите пароль"
+              required
+              value={form.password}
+              onChange={(event) =>
+                setForm({ ...form, password: event.target.value })
+              }
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-cyan-700 focus:bg-white focus:ring-4 focus:ring-cyan-700/10"
+            />
+          </div>
+
+          {error && (
+            <p
+              role="alert"
+              className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="mt-7 w-full rounded-xl bg-[#123b50] px-4 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#19556c] hover:shadow-lg disabled:cursor-wait disabled:opacity-60"
           >
-            {successMessage}
+            {submitting ? "Входим..." : "Войти в аккаунт"}
+          </button>
+
+          <div className="my-6 flex items-center gap-4">
+            <div className="h-px flex-1 bg-slate-200" />
+            <span className="text-xs text-slate-400">ИЛИ</span>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+
+          <p className="text-center text-sm text-slate-600">
+            Ещё нет аккаунта?{" "}
+            <Link
+              to="/register"
+              className="font-semibold text-cyan-800 transition hover:text-cyan-600"
+            >
+              Зарегистрироваться
+            </Link>
           </p>
-        )}
-        <label
-          className="mt-6 block text-sm font-medium text-slate-700"
-          htmlFor="email"
-        >
-          Электронная почта
-        </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={form.email}
-          onChange={(event) => setForm({ ...form, email: event.target.value })}
-          className="mt-2 w-full rounded-lg border border-stone-300 bg-sand px-3.5 py-3 outline-none focus:border-brand-700"
-        />
-        <label
-          className="mt-5 block text-sm font-medium text-slate-700"
-          htmlFor="password"
-        >
-          Пароль
-        </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={form.password}
-          onChange={(event) =>
-            setForm({ ...form, password: event.target.value })
-          }
-          className="mt-2 w-full rounded-lg border border-stone-300 bg-sand px-3.5 py-3 outline-none focus:border-brand-700"
-        />
-        {error && (
-          <p
-            role="alert"
-            className="mt-4 rounded-lg bg-red-50 px-3.5 py-3 text-sm text-red-700"
-          >
-            {error}
-          </p>
-        )}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-6 w-full rounded-lg bg-brand-900 px-4 py-3 font-semibold text-white transition hover:bg-brand-700 disabled:cursor-wait disabled:opacity-60"
-        >
-          {submitting ? "Входим..." : "Войти"}
-        </button>
-        <p className="mt-5 text-center text-sm text-slate-600">
-          Нет аккаунта?{" "}
-          <Link
-            to="/register"
-            className="font-semibold text-brand-900 hover:underline"
-          >
-            Зарегистрироваться
-          </Link>
-        </p>
-      </form>
-    </div>
+        </form>
+      </div>
+    </main>
   );
 }

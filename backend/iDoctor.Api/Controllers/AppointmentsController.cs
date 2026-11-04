@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using iDoctor.Api.Dtos;
 using iDoctor.Api.Extensions;
 using iDoctor.Domain.Constants;
@@ -175,12 +175,18 @@ public sealed class AppointmentsController(
         CancellationToken cancellationToken)
     {
         if (request.DoctorId == Guid.Empty ||
+            request.ClinicId <= 0 ||
+            (request.Reason?.Length ?? 0) > 500 ||
             request.Date < DateOnly.FromDateTime(DateTime.Now) ||
             (request.Date == DateOnly.FromDateTime(DateTime.Now) &&
              request.StartTime <= TimeOnly.FromDateTime(DateTime.Now)))
         {
             return BadRequest(new { error = "Choose a valid doctor and a date that is not in the past." });
         }
+
+        var patientId = User.GetUserId();
+        if (!await db.Patients.AnyAsync(p => p.UserId == patientId, cancellationToken))
+            return NotFound(new { error = "Patient profile not found." });
 
         var workingHours = await db.DoctorWorkingHours
             .AsNoTracking()
@@ -192,7 +198,10 @@ public sealed class AppointmentsController(
                 hours.Clinic.IsActive &&
                 hours.DayOfWeek == (short)request.Date.DayOfWeek &&
                 hours.IsActive &&
+                hours.SlotDurationMinutes > 0 &&
                 request.StartTime >= hours.StartTime &&
+                (request.StartTime - hours.StartTime).Ticks %
+                    TimeSpan.FromMinutes(hours.SlotDurationMinutes).Ticks == 0 &&
                 request.StartTime.AddMinutes(hours.SlotDurationMinutes) <= hours.EndTime,
                 cancellationToken);
 
@@ -212,7 +221,9 @@ public sealed class AppointmentsController(
                         item.StartTime == request.StartTime,
                 cancellationToken);
 
-            if (slot is not null && slot.Status != SlotStatus.Available)
+            if (slot is not null &&
+                (slot.Status != SlotStatus.Available ||
+                 await db.Appointments.AnyAsync(a => a.SlotId == slot.Id, cancellationToken)))
                 return Conflict(new { error = "This appointment time has already been booked." });
 
             if (slot is null)
@@ -223,7 +234,8 @@ public sealed class AppointmentsController(
                     ClinicId = request.ClinicId,
                     SlotDate = request.Date,
                     StartTime = request.StartTime,
-                    EndTime = request.StartTime.AddMinutes(workingHours.SlotDurationMinutes)
+                    EndTime = request.StartTime.AddMinutes(workingHours.SlotDurationMinutes),
+                    Status = SlotStatus.Available
                 };
                 db.AppointmentSlots.Add(slot);
                 await db.SaveChangesAsync(cancellationToken);
@@ -232,11 +244,13 @@ public sealed class AppointmentsController(
             var appointment = new Appointment
             {
                 SlotId = slot.Id,
-                PatientId = User.GetUserId(),
+                PatientId = patientId,
                 DoctorId = request.DoctorId,
                 ClinicId = request.ClinicId,
                 Status = AppointmentStatus.Pending,
-                Reason = request.Reason?.Trim()
+                Reason = request.Reason?.Trim(),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             slot.Status = SlotStatus.Booked;
@@ -252,9 +266,172 @@ public sealed class AppointmentsController(
         }
         catch (DbUpdateException exception)
         {
+            await transaction.RollbackAsync(cancellationToken);
             logger.LogWarning(exception, "Appointment slot was booked concurrently.");
             return Conflict(new { error = "This appointment time has already been booked. Choose another time." });
         }
+    }
+
+    // Compatibility endpoint for the clinic-specific slot picker.
+    [AllowAnonymous]
+    [HttpGet("slots")]
+    public async Task<IActionResult> GetSlots(
+        [FromQuery] Guid doctorId,
+        [FromQuery] DateOnly date,
+        [FromQuery] int clinicId,
+        CancellationToken cancellationToken)
+    {
+        if (doctorId == Guid.Empty || clinicId <= 0 || date < DateOnly.FromDateTime(DateTime.Today))
+            return BadRequest(new { error = "Invalid doctor, clinic or date." });
+
+        var doctorExists = await db.Doctors.AnyAsync(d =>
+            d.UserId == doctorId && d.IsVerified && d.User.IsActive &&
+            d.WorkingHours.Any(w => w.ClinicId == clinicId && w.IsActive && w.Clinic.IsActive),
+            cancellationToken);
+        if (!doctorExists)
+            return NotFound(new { error = "Doctor or clinic not found." });
+
+        var schedules = await db.DoctorWorkingHours.AsNoTracking()
+            .Where(w => w.DoctorId == doctorId && w.ClinicId == clinicId &&
+                        w.DayOfWeek == (short)date.DayOfWeek && w.IsActive && w.Clinic.IsActive)
+            .ToListAsync(cancellationToken);
+        var existingSlots = await db.AppointmentSlots.AsNoTracking()
+            .Where(s => s.DoctorId == doctorId && s.ClinicId == clinicId && s.SlotDate == date)
+            .ToListAsync(cancellationToken);
+        var bookedSlotIds = await db.Appointments.AsNoTracking()
+            .Where(a => a.Slot.DoctorId == doctorId && a.Slot.ClinicId == clinicId &&
+                        a.Slot.SlotDate == date &&
+                        (a.Status == AppointmentStatus.Pending || a.Status == AppointmentStatus.Confirmed))
+            .Select(a => a.SlotId).ToListAsync(cancellationToken);
+        var booked = bookedSlotIds.ToHashSet();
+        var result = new List<object>();
+        var seen = new HashSet<TimeOnly>();
+        foreach (var schedule in schedules)
+        {
+            if (schedule.SlotDurationMinutes <= 0) continue;
+            var start = schedule.StartTime;
+            while (start.AddMinutes(schedule.SlotDurationMinutes) <= schedule.EndTime)
+            {
+                var end = start.AddMinutes(schedule.SlotDurationMinutes);
+                var existing = existingSlots.FirstOrDefault(s => s.StartTime == start);
+                if (seen.Add(start) &&
+                    (existing is null || (existing.Status == SlotStatus.Available && !booked.Contains(existing.Id))) &&
+                    (date != DateOnly.FromDateTime(DateTime.Today) || start > TimeOnly.FromDateTime(DateTime.Now)))
+                {
+                    result.Add(new {
+                        slotId = existing?.Id,
+                        date,
+                        startTime = start.ToString("HH:mm"),
+                        endTime = end.ToString("HH:mm"),
+                        clinicId
+                    });
+                }
+                start = end;
+            }
+        }
+        return Ok(result);
+    }
+
+    [Authorize(Roles = Roles.Patient)]
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMyAppointments(CancellationToken cancellationToken)
+    {
+        var patientId = User.GetUserId();
+        var appointments = await db.Appointments.AsNoTracking()
+            .Where(a => a.PatientId == patientId)
+            .OrderByDescending(a => a.Slot.SlotDate)
+            .ThenByDescending(a => a.Slot.StartTime)
+            .Select(a => new {
+                a.Id, a.Status, a.Reason,
+                date = a.Slot.SlotDate,
+                startTime = a.Slot.StartTime.ToString(),
+                endTime = a.Slot.EndTime.ToString(),
+                doctorName = a.Doctor.User.FullName,
+                clinicName = a.Clinic.Name,
+                clinicAddress = a.Clinic.Address
+            }).ToListAsync(cancellationToken);
+        return Ok(appointments);
+    }
+
+    [HttpPatch("{id:long}/confirm")]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ClinicManager)]
+    public async Task<IActionResult> Confirm(long id, CancellationToken cancellationToken)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        var appointment = await db.Appointments.FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+        if (appointment is null) return NotFound(new { error = "Appointment not found." });
+        if (!User.IsInRole(Roles.Admin))
+        {
+            var userId = User.GetUserId();
+            var clinicId = await db.Users.Where(u => u.Id == userId && u.IsActive)
+                .Select(u => u.ManagedClinicId).SingleOrDefaultAsync(cancellationToken);
+            if (clinicId is null || clinicId.Value != appointment.ClinicId) return Forbid();
+        }
+        if (appointment.Status != AppointmentStatus.Pending)
+            return Conflict(new { error = "Only pending appointments can be confirmed." });
+        appointment.Status = AppointmentStatus.Confirmed;
+        appointment.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return Ok(new { appointment.Id, appointment.Status, message = "Appointment confirmed successfully." });
+    }
+
+    [HttpGet("clinic")]
+    [Authorize(Roles = Roles.ClinicManager)]
+    public async Task<IActionResult> GetClinicAppointments(CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var clinicId = await db.Users.Where(u => u.Id == userId && u.IsActive)
+            .Select(u => u.ManagedClinicId).SingleOrDefaultAsync(cancellationToken);
+        if (clinicId is null) return Forbid();
+        var appointments = await db.Appointments.AsNoTracking()
+            .Where(a => a.ClinicId == clinicId.Value)
+            .OrderByDescending(a => a.Slot.SlotDate)
+            .ThenBy(a => a.Slot.StartTime)
+            .Select(a => new {
+                a.Id, a.Status, a.Reason, a.CancelReason,
+                date = a.Slot.SlotDate,
+                startTime = a.Slot.StartTime.ToString("HH:mm"),
+                endTime = a.Slot.EndTime.ToString("HH:mm"),
+                doctorName = a.Doctor.User.FullName,
+                patientName = a.Patient.User.FullName,
+                patientPhone = a.Patient.User.PhoneNumber,
+                clinicName = a.Clinic.Name
+            }).ToListAsync(cancellationToken);
+        return Ok(appointments);
+    }
+
+    public sealed record RejectAppointmentRequest(string Reason);
+
+    [HttpPatch("{id:long}/reject")]
+    [Authorize(Roles = Roles.Admin + "," + Roles.ClinicManager)]
+    public async Task<IActionResult> Reject(long id, [FromBody] RejectAppointmentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var reason = request?.Reason?.Trim();
+        if (string.IsNullOrWhiteSpace(reason) || reason.Length > 500)
+            return BadRequest(new { error = "A rejection reason of 1-500 characters is required." });
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        var appointment = await db.Appointments.Include(a => a.Slot)
+            .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+        if (appointment is null) return NotFound(new { error = "Appointment not found." });
+        if (!User.IsInRole(Roles.Admin))
+        {
+            var userId = User.GetUserId();
+            var clinicId = await db.Users.Where(u => u.Id == userId && u.IsActive)
+                .Select(u => u.ManagedClinicId).SingleOrDefaultAsync(cancellationToken);
+            if (clinicId is null || clinicId.Value != appointment.ClinicId) return Forbid();
+        }
+        if (appointment.Status != AppointmentStatus.Pending)
+            return Conflict(new { error = "Only pending appointments can be rejected." });
+        appointment.Status = AppointmentStatus.CancelledByDoctor;
+        appointment.CancelReason = reason;
+        appointment.UpdatedAt = DateTime.UtcNow;
+        appointment.Slot.Status = SlotStatus.Available;
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return Ok(new { appointment.Id, appointment.Status, appointment.CancelReason,
+            message = "Appointment rejected successfully." });
     }
 
     private IQueryable<Appointment> AppointmentQuery() =>

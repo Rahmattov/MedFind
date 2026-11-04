@@ -12,4 +12,8 @@ public class User : IdentityUser<Guid>
 
     public Patient? Patient { get; set; }
     public Doctor? Doctor { get; set; }
+    public int? ManagedClinicId { get; set; }
+    public Clinic? ManagedClinic { get; set; }
+    public int? ManagedPharmacyId { get; set; }
+    public Pharmacy? ManagedPharmacy { get; set; }
 }

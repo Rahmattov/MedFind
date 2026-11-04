@@ -160,7 +160,7 @@ export default function Register() {
           </p>
         </div>
 
-        <div className="mb-6 grid grid-cols-2 gap-3">
+        <div className="mb-6 grid grid-cols-3 gap-3">
           <button
             type="button"
             onClick={() => {
@@ -189,6 +189,15 @@ export default function Register() {
             }`}
           >
             Doctor
+          </button>
+
+
+          <button
+            type="button"
+            onClick={() => navigate("/clinics/register")}
+            className="rounded-xl border border-stone-200 px-3 py-3 font-medium text-slate-700 transition hover:border-brand-900 hover:text-brand-900"
+          >
+            Clinic
           </button>
         </div>
 

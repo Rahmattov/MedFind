@@ -1,0 +1,17 @@
+
+{
+  "home": "Главная",
+  "doctors": "Врачи",
+  "clinics": "Клиники",
+  "search": "Поиск",
+  "login": "Войти",
+  "register": "Регистрация",
+  "findDoctor": "Найти врача",
+  "featuredDoctors": "Рекомендованные врачи",
+  "featuredClinics": "Популярные клиники",
+  "viewAll": "Посмотреть все",
+  "details": "Подробнее",
+  "loading": "Загрузка...",
+  "cityNotSpecified": "Город не указан",
+  "addressNotSpecified": "Адрес не указан"
+}

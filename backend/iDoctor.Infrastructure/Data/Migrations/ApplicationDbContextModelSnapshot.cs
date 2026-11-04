@@ -311,6 +311,11 @@ namespace iDoctor.Infrastructure.Data.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<string>("ApprovalStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<int?>("CityId")
                         .HasColumnType("integer");
 
@@ -323,6 +328,9 @@ namespace iDoctor.Infrastructure.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("ManagerUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -332,9 +340,19 @@ namespace iDoctor.Infrastructure.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("PhotoUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CityId");
+
+                    b.HasIndex("ManagerUserId");
 
                     b.ToTable("clinics", (string)null);
                 });
@@ -371,6 +389,42 @@ namespace iDoctor.Infrastructure.Data.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("doctors", (string)null);
+                });
+
+            modelBuilder.Entity("iDoctor.Domain.Entities.DoctorReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DoctorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorId");
+
+                    b.HasIndex("PatientId", "DoctorId")
+                        .IsUnique();
+
+                    b.ToTable("doctor_reviews", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_doctor_reviews_rating", "\"Rating\" >= 1 AND \"Rating\" <= 5");
+                        });
                 });
 
             modelBuilder.Entity("iDoctor.Domain.Entities.DoctorWorkingHours", b =>
@@ -414,6 +468,70 @@ namespace iDoctor.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("iDoctor.Domain.Entities.Medicine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Dosage")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Form")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Manufacturer")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("PharmacyId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PhotoUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("StockQuantity")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("PharmacyId");
+
+                    b.ToTable("medicines", (string)null);
+                });
+
             modelBuilder.Entity("iDoctor.Domain.Entities.Patient", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -434,6 +552,62 @@ namespace iDoctor.Infrastructure.Data.Migrations
                     b.HasIndex("CityId");
 
                     b.ToTable("patients", (string)null);
+                });
+
+            modelBuilder.Entity("iDoctor.Domain.Entities.Pharmacy", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("ApprovalStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int?>("CityId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("PhotoUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovalStatus");
+
+                    b.HasIndex("CityId");
+
+                    b.ToTable("pharmacies", (string)null);
                 });
 
             modelBuilder.Entity("iDoctor.Domain.Entities.Specialty", b =>
@@ -505,6 +679,12 @@ namespace iDoctor.Infrastructure.Data.Migrations
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("ManagedClinicId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ManagedPharmacyId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -538,6 +718,10 @@ namespace iDoctor.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ManagedClinicId");
+
+                    b.HasIndex("ManagedPharmacyId");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -694,6 +878,11 @@ namespace iDoctor.Infrastructure.Data.Migrations
                         .HasForeignKey("CityId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("iDoctor.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ManagerUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("City");
                 });
 
@@ -706,6 +895,25 @@ namespace iDoctor.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("iDoctor.Domain.Entities.DoctorReview", b =>
+                {
+                    b.HasOne("iDoctor.Domain.Entities.Doctor", "Doctor")
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("iDoctor.Domain.Entities.Patient", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("Patient");
                 });
 
             modelBuilder.Entity("iDoctor.Domain.Entities.DoctorWorkingHours", b =>
@@ -727,6 +935,17 @@ namespace iDoctor.Infrastructure.Data.Migrations
                     b.Navigation("Doctor");
                 });
 
+            modelBuilder.Entity("iDoctor.Domain.Entities.Medicine", b =>
+                {
+                    b.HasOne("iDoctor.Domain.Entities.Pharmacy", "Pharmacy")
+                        .WithMany("Medicines")
+                        .HasForeignKey("PharmacyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Pharmacy");
+                });
+
             modelBuilder.Entity("iDoctor.Domain.Entities.Patient", b =>
                 {
                     b.HasOne("iDoctor.Domain.Entities.City", "City")
@@ -743,6 +962,33 @@ namespace iDoctor.Infrastructure.Data.Migrations
                     b.Navigation("City");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("iDoctor.Domain.Entities.Pharmacy", b =>
+                {
+                    b.HasOne("iDoctor.Domain.Entities.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("City");
+                });
+
+            modelBuilder.Entity("iDoctor.Domain.Entities.User", b =>
+                {
+                    b.HasOne("iDoctor.Domain.Entities.Clinic", "ManagedClinic")
+                        .WithMany()
+                        .HasForeignKey("ManagedClinicId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("iDoctor.Domain.Entities.Pharmacy", "ManagedPharmacy")
+                        .WithMany()
+                        .HasForeignKey("ManagedPharmacyId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ManagedClinic");
+
+                    b.Navigation("ManagedPharmacy");
                 });
 
             modelBuilder.Entity("iDoctor.Domain.Entities.AppointmentSlot", b =>
@@ -776,6 +1022,11 @@ namespace iDoctor.Infrastructure.Data.Migrations
             modelBuilder.Entity("iDoctor.Domain.Entities.Patient", b =>
                 {
                     b.Navigation("Appointments");
+                });
+
+            modelBuilder.Entity("iDoctor.Domain.Entities.Pharmacy", b =>
+                {
+                    b.Navigation("Medicines");
                 });
 
             modelBuilder.Entity("iDoctor.Domain.Entities.User", b =>

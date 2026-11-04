@@ -1,0 +1,17 @@
+
+{
+  "home": "Асосӣ",
+  "doctors": "Табибон",
+  "clinics": "Дармонгоҳҳо",
+  "search": "Ҷустуҷӯ",
+  "login": "Ворид шудан",
+  "register": "Сабти ном",
+  "findDoctor": "Табибро ёфтан",
+  "featuredDoctors": "Табибони тавсияшаванда",
+  "featuredClinics": "Дармонгоҳҳои маъруф",
+  "viewAll": "Ҳамаро дидан",
+  "details": "Тафсилот",
+  "loading": "Бор шуда истодааст...",
+  "cityNotSpecified": "Шаҳр нишон дода нашудааст",
+  "addressNotSpecified": "Суроға нишон дода нашудааст"
+}

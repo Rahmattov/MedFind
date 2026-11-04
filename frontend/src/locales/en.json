@@ -1,0 +1,17 @@
+
+{
+  "home": "Home",
+  "doctors": "Doctors",
+  "clinics": "Clinics",
+  "search": "Search",
+  "login": "Log in",
+  "register": "Register",
+  "findDoctor": "Find a doctor",
+  "featuredDoctors": "Recommended doctors",
+  "featuredClinics": "Featured clinics",
+  "viewAll": "View all",
+  "details": "Details",
+  "loading": "Loading...",
+  "cityNotSpecified": "City not specified",
+  "addressNotSpecified": "Address not specified"
+}

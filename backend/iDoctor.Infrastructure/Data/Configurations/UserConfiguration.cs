@@ -10,8 +10,20 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
     {
         builder.ToTable("users");
 
-        builder.Property(u => u.FullName).HasMaxLength(200).IsRequired();
-        builder.Property(u => u.PhoneNumber).HasMaxLength(20).IsRequired();
-        builder.HasIndex(u => u.PhoneNumber).IsUnique();
+        builder.Property(u => u.FullName)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        builder.Property(u => u.PhoneNumber)
+            .HasMaxLength(20)
+            .IsRequired();
+
+        builder.HasIndex(u => u.PhoneNumber)
+            .IsUnique();
+
+        builder.HasOne(u => u.ManagedClinic)
+            .WithMany()
+            .HasForeignKey(u => u.ManagedClinicId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
