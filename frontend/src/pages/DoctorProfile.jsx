@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { doctors as mockDoctors } from "../data/doctors";
 
@@ -31,12 +31,14 @@ async function readResponse(response) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       data?.error ||
         data?.message ||
         data?.title ||
         `Ошибка сервера: HTTP ${response.status}`
     );
+    error.status = response.status;
+    throw error;
   }
 
   return data;
@@ -52,6 +54,7 @@ export default function DoctorProfile() {
   const [doctor, setDoctor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [doctorRetry, setDoctorRetry] = useState(0);
 
   const [clinicId, setClinicId] = useState("");
   const [date, setDate] = useState("");
@@ -60,7 +63,10 @@ export default function DoctorProfile() {
 
   const [slots, setSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState(false);
+  const [slotsRetry, setSlotsRetry] = useState(0);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const bookingInFlight = useRef(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("info");
 
@@ -126,7 +132,7 @@ export default function DoctorProfile() {
 
     loadDoctor();
     return () => controller.abort();
-  }, [id]);
+  }, [id, doctorRetry]);
 
   useEffect(() => {
     if (window.location.hash !== "#booking") return;
@@ -144,6 +150,7 @@ export default function DoctorProfile() {
       setSlots([]);
       setTime("");
       setSlotsLoading(false);
+      setSlotsError(false);
       return;
     }
 
@@ -151,9 +158,9 @@ export default function DoctorProfile() {
 
     async function loadSlots() {
       setSlotsLoading(true);
+      setSlotsError(false);
       setSlots([]);
       setTime("");
-      setMessage("");
 
       try {
         const params = new URLSearchParams({
@@ -178,10 +185,7 @@ export default function DoctorProfile() {
         }
       } catch (error) {
         if (error.name !== "AbortError") {
-          setMessage(
-            error.message || "Не удалось загрузить свободное время."
-          );
-          setMessageType("error");
+          setSlotsError(true);
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -192,7 +196,7 @@ export default function DoctorProfile() {
 
     loadSlots();
     return () => controller.abort();
-  }, [doctor?.id, date, clinicId]);
+  }, [doctor?.id, date, clinicId, slotsRetry]);
 
   useEffect(() => {
     const clinics = doctor?.clinics ?? [];
@@ -302,6 +306,7 @@ async function handleReviewSubmit(event) {
 
   async function handleBooking(event) {
     event.preventDefault();
+    if (bookingInFlight.current) return;
     setMessage("");
 
     const token = localStorage.getItem(TOKEN_KEY);
@@ -324,6 +329,7 @@ async function handleReviewSubmit(event) {
       return;
     }
 
+    bookingInFlight.current = true;
     setBookingLoading(true);
 
     try {
@@ -342,7 +348,7 @@ async function handleReviewSubmit(event) {
         }),
       });
 
-      const data = await readResponse(response);
+      await readResponse(response);
 
       setMessage(
         `Запись успешно создана!`
@@ -357,18 +363,20 @@ async function handleReviewSubmit(event) {
         clinicId,
       });
 
-      const slotsResponse = await fetch(
-        `${API_BASE_URL}/appointments/slots?${params.toString()}`
-      );
-
-      if (slotsResponse.ok) {
+      try {
+        const slotsResponse = await fetch(
+          `${API_BASE_URL}/appointments/slots?${params.toString()}`
+        );
+        if (!slotsResponse.ok) throw new Error("Slots refresh failed");
         const updatedSlots = await slotsResponse.json();
-        if (Array.isArray(updatedSlots)) {
-          setSlots(updatedSlots);
-        }
+        if (!Array.isArray(updatedSlots)) throw new Error("Invalid slots response");
+        setSlots(updatedSlots);
+      } catch {
+        setSlots([]);
+        setSlotsError(true);
       }
     } catch (error) {
-      if (error.message?.includes("409")) {
+      if (error.status === 409) {
         setMessage("Это время уже занято. Выберите другой свободный слот.");
       } else {
         setMessage(
@@ -378,6 +386,7 @@ async function handleReviewSubmit(event) {
 
       setMessageType("error");
     } finally {
+      bookingInFlight.current = false;
       setBookingLoading(false);
     }
   }
@@ -385,7 +394,8 @@ async function handleReviewSubmit(event) {
   if (loading) {
     return (
       <main className="min-h-screen bg-[#f4f7fa] px-5 py-10 sm:px-8">
-        <div className="mx-auto max-w-6xl animate-pulse space-y-6">
+        <div role="status" aria-label="Загружаем профиль врача" className="mx-auto max-w-6xl animate-pulse space-y-6">
+          <span className="sr-only">Загружаем профиль врача...</span>
           <div className="h-6 w-32 rounded bg-slate-200" />
           <div className="h-64 rounded-[2rem] bg-slate-200 sm:h-72" />
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -405,14 +415,17 @@ async function handleReviewSubmit(event) {
             !
           </div>
           <h1 className="mt-6 text-3xl font-bold text-[#17364a]">
-            Врач не найден
+            Не удалось загрузить профиль врача
           </h1>
           <p className="mt-3 text-sm leading-6 text-slate-500">
             {loadError || "Этот профиль недоступен."}
           </p>
+          <button type="button" onClick={() => setDoctorRetry((value) => value + 1)} className="mt-6 rounded-xl border border-slate-200 px-6 py-3 font-semibold text-[#173f53] transition hover:bg-slate-50">
+            Попробовать снова
+          </button>
           <Link
             to="/search"
-            className="mt-7 inline-flex rounded-xl bg-[#173f53] px-6 py-3 font-semibold text-white transition hover:bg-[#117b83]"
+            className="mt-4 inline-flex rounded-xl bg-[#173f53] px-6 py-3 font-semibold text-white transition hover:bg-[#117b83] sm:ml-3"
           >
             Вернуться к врачам
           </Link>
@@ -786,7 +799,7 @@ async function handleReviewSubmit(event) {
                   }}
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-slate-700 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-50 disabled:bg-slate-50"
                   required
-                  disabled={clinics.length === 0}
+                  disabled={clinics.length === 0 || bookingLoading}
                 >
                   <option value="">Выберите клинику</option>
                   {clinics.map((clinic) => (
@@ -822,6 +835,7 @@ async function handleReviewSubmit(event) {
                   }}
                   className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-slate-700 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-50"
                   required
+                  disabled={bookingLoading}
                 />
               </div>
 
@@ -842,6 +856,8 @@ async function handleReviewSubmit(event) {
                     !date ||
                     !clinicId ||
                     slotsLoading ||
+                    slotsError ||
+                    bookingLoading ||
                     slots.length === 0
                   }
                 >
@@ -852,9 +868,11 @@ async function handleReviewSubmit(event) {
                         ? "Сначала выберите дату"
                         : !clinicId
                           ? "Выберите клинику"
-                          : slots.length === 0
-                            ? "Нет свободного времени"
-                            : "Выберите время"}
+                          : slotsError
+                            ? "Не удалось загрузить время"
+                            : slots.length === 0
+                              ? "Нет свободного времени"
+                              : "Выберите время"}
                   </option>
                   {slots.map((slot) => (
                     <option
@@ -871,6 +889,14 @@ async function handleReviewSubmit(event) {
                     ? "Проверяем доступность времени..."
                     : "Показываем свободные слоты из расписания клиники."}
                 </p>
+                {slotsError && (
+                  <div role="alert" className="mt-2 text-xs leading-5 text-red-700">
+                    Не удалось загрузить свободное время. {" "}
+                    <button type="button" disabled={bookingLoading} onClick={() => setSlotsRetry((value) => value + 1)} className="font-semibold underline disabled:opacity-50">
+                      Попробовать снова
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -890,6 +916,7 @@ async function handleReviewSubmit(event) {
                   placeholder="Кратко опишите причину обращения"
                   maxLength={500}
                   rows={3}
+                  disabled={bookingLoading}
                   className="w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-50"
                 />
               </div>
@@ -922,6 +949,10 @@ async function handleReviewSubmit(event) {
                 disabled={
                   bookingLoading ||
                   slotsLoading ||
+                  slotsError ||
+                  !doctor?.id ||
+                  !clinicId ||
+                  !date ||
                   !time ||
                   !slots.some((slot) => slot.startTime === time)
                 }

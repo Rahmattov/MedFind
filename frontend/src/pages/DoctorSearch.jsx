@@ -1,17 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DoctorCard from "../components/DoctorCard";
-
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5195/api"
-).replace(/\/$/, "");
-
-const specialtyNames = {
-  Therapist: "Терапевт",
-  Cardiologist: "Кардиолог",
-  Dermatologist: "Дерматолог",
-  Neurologist: "Невролог",
-  Pediatrician: "Педиатр",
-};
+import { apiRequest } from "../api/client";
+import { filterDoctors, normalizeDoctor } from "./doctorSearchUtils";
 
 const specialtyIcons = {
   "Все": "✚",
@@ -21,24 +11,6 @@ const specialtyIcons = {
   "Невролог": "🧠",
   "Педиатр": "🧸",
 };
-
-function normalizeDoctor(doctor) {
-  const specialty =
-    doctor.specialties
-      ?.map((item) => specialtyNames[item.name] || item.name)
-      .join(", ") || "Специальность не указана";
-
-  return {
-    id: doctor.id,
-    name: doctor.fullName,
-    rating: doctor.averageRating ?? 0,
-    price: doctor.consultationPrice ?? 0,
-    specialty,
-    experience: doctor.experienceYears ?? 0,
-    clinic: doctor.clinics?.[0]?.name || "Клиника не указана",
-    photoUrl: doctor.photoUrl || doctor.PhotoUrl,
-  };
-}
 
 export default function DoctorSearch() {
   const [doctors, setDoctors] = useState([]);
@@ -56,21 +28,20 @@ export default function DoctorSearch() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(`${API_BASE_URL}/doctors`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        const items = Array.isArray(data)
-          ? data
-          : Array.isArray(data.items)
-            ? data.items
-            : [];
+        const items = [];
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const data = await apiRequest(`/doctors?page=${page}&pageSize=50`, {
+            signal: controller.signal,
+          });
+          if (!Array.isArray(data?.items) || !Number.isInteger(data.totalPages) || data.totalPages < 0) {
+            throw new Error("Некорректный ответ сервера");
+          }
+          items.push(...data.items);
+          totalPages = data.totalPages;
+          page += 1;
+        } while (page <= totalPages);
 
         if (!controller.signal.aborted) {
           setDoctors(items.map(normalizeDoctor));
@@ -78,9 +49,8 @@ export default function DoctorSearch() {
       } catch (err) {
         if (err.name !== "AbortError") {
           setError(
-            "Не удалось загрузить врачей. Убедитесь, что backend запущен."
+            "Проверьте подключение к серверу и попробуйте ещё раз."
           );
-          console.error("Failed to load doctors:", err);
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -112,27 +82,10 @@ export default function DoctorSearch() {
     [doctors]
   );
 
-  const filteredDoctors = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("ru");
-
-    return doctors.filter((doctor) => {
-      const matchesSearch = [
-        doctor.name,
-        doctor.specialty,
-        doctor.clinic,
-      ].some((value) =>
-        value?.toLocaleLowerCase("ru").includes(query)
-      );
-
-      const matchesSpecialty =
-        specialty === "Все" ||
-        doctor.specialty.split(",").some(
-          (item) => item.trim() === specialty
-        );
-
-      return matchesSearch && matchesSpecialty;
-    });
-  }, [doctors, search, specialty]);
+  const filteredDoctors = useMemo(
+    () => filterDoctors(doctors, search, specialty),
+    [doctors, search, specialty]
+  );
 
   function resetFilters() {
     setSearch("");
@@ -277,7 +230,8 @@ export default function DoctorSearch() {
 
         {/* Loading */}
         {loading && (
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <div role="status" aria-label="Загружаем врачей" className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <span className="sr-only">Загружаем врачей...</span>
             {[1, 2, 3, 4, 5, 6].map((item) => (
               <div
                 key={item}
@@ -359,7 +313,7 @@ export default function DoctorSearch() {
                 onClick={resetFilters}
                 className="mt-5 rounded-xl bg-[#245541] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#173f35]"
               >
-                Показать всех врачей
+                Сбросить фильтры
               </button>
             )}
           </div>
