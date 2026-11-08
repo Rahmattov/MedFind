@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import PatientAppointments from "../components/PatientAppointments";
 
 export default function PatientProfile() {
   const { patient, logout, refreshProfile, authError } = useAuth();
@@ -228,6 +229,7 @@ export default function PatientProfile() {
             </button>
           </div>
         </div>
+        <PatientAppointments patient={patient} />
       </div>
     </main>
   );

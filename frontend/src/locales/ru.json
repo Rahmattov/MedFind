@@ -13,5 +13,32 @@
   "details": "Подробнее",
   "loading": "Загрузка...",
   "cityNotSpecified": "Город не указан",
-  "addressNotSpecified": "Адрес не указан"
+  "addressNotSpecified": "Адрес не указан",
+  "patientAppointments": {
+    "title": "Мои записи",
+    "groupLabel": "Группы записей",
+    "upcoming": "Предстоящие",
+    "history": "История",
+    "emptyUpcoming": "У вас нет предстоящих записей.",
+    "emptyHistory": "История записей пока пуста.",
+    "loading": "Загружаем записи...",
+    "empty": "У вас пока нет записей на приём.",
+    "error": "Не удалось загрузить записи. Попробуйте ещё раз.",
+    "retry": "Повторить",
+    "notSpecified": "Не указано",
+    "clinic": "Клиника",
+    "date": "Дата приёма",
+    "time": "Время приёма",
+    "address": "Адрес клиники",
+    "reason": "Причина обращения",
+    "status": {
+      "Pending": "Ожидает подтверждения",
+      "Confirmed": "Подтверждена",
+      "Completed": "Завершена",
+      "CancelledByPatient": "Отменена пациентом",
+      "CancelledByDoctor": "Отменена врачом",
+      "NoShow": "Неявка",
+      "unknown": "Статус не указан"
+    }
+  }
 }
