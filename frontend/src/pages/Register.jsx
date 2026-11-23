@@ -61,19 +61,29 @@ export default function Register() {
     event.preventDefault();
     setError("");
 
+    if (!/^\+992\d{9}$/.test(phoneNumber.trim())) {
+      setError("Phone number must be in the format +992XXXXXXXXX.");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must contain at least 8 characters.");
+    if (password.length < 8 || !/\d/.test(password)) {
+      setError("Password must contain at least 8 characters and at least one digit.");
       return;
     }
 
     const parts = name.trim().split(/\s+/);
     const firstName = parts[0] || "";
     const lastName = parts.slice(1).join(" ");
+
+    if (!firstName) {
+      setError("Please enter your full name.");
+      return;
+    }
 
     if (role === "doctor" && !specialtyId) {
       setError("Please select your specialty.");
@@ -102,11 +112,11 @@ export default function Register() {
               : Number(consultationPrice),
           bio: bio.trim(),
         });
+        navigate("/dashboard");
       } else {
         await register(details);
+        navigate("/profile");
       }
-
-      navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Registration failed.");
     } finally {
@@ -336,8 +346,10 @@ export default function Register() {
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
               minLength={8}
+              pattern="(?=.*\d).{8,}"
+              title="At least 8 characters, including at least one digit"
               required
-              placeholder="At least 8 characters"
+              placeholder="At least 8 characters, including a digit"
               className="w-full rounded-xl border border-stone-200 bg-sand px-4 py-3 text-sm outline-none focus:border-brand-900"
             />
           </div>

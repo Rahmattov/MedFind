@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listMyAppointments } from "../api/appointments";
+import { cancelAppointment, listMyAppointments } from "../api/appointments";
 import ru from "../locales/ru.json";
 import { groupAppointments } from "./appointmentGroups";
 
@@ -30,6 +30,8 @@ export default function PatientAppointments({ patient }) {
   const [state, setState] = useState({ loading: true, error: false, items: [] });
   const [attempt, setAttempt] = useState(0);
   const [group, setGroup] = useState("upcoming");
+  const [cancellingId, setCancellingId] = useState(null);
+  const [feedback, setFeedback] = useState(null);
   const roles = patient?.roles?.length ? patient.roles : [patient?.role];
   const isPatient = roles.some((role) => String(role).toLowerCase() === "patient");
   const patientId = patient?.id;
@@ -53,6 +55,31 @@ export default function PatientAppointments({ patient }) {
 
   if (!isPatient) return null;
 
+  async function handleCancel(appointmentId) {
+    if (cancellingId !== null) return;
+    const confirmed = window.confirm("Вы уверены, что хотите отменить эту запись?");
+    if (!confirmed) return;
+
+    setCancellingId(appointmentId);
+    setFeedback(null);
+
+    try {
+      await cancelAppointment(appointmentId);
+      setFeedback({
+        type: "success",
+        message: "Запись успешно отменена.",
+      });
+      setAttempt((value) => value + 1);
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        message: error?.message || "Не удалось отменить запись. Попробуйте ещё раз.",
+      });
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
   const fallback = labels.notSpecified;
   const groups = groupAppointments(state.items);
   const visibleItems = groups[group];
@@ -61,6 +88,19 @@ export default function PatientAppointments({ patient }) {
       <h2 id="patient-appointments-title" className="font-display text-2xl font-semibold text-[#173f35]">
         {labels.title}
       </h2>
+
+      {feedback && (
+        <div
+          role={feedback.type === "error" ? "alert" : "status"}
+          className={`mt-5 rounded-2xl border p-4 text-sm ${
+            feedback.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-red-100 bg-red-50 text-red-700"
+          }`}
+        >
+          {feedback.message}
+        </div>
+      )}
 
       {state.loading ? (
         <p role="status" className="mt-5 text-sm text-slate-500">{labels.loading}</p>
@@ -101,6 +141,19 @@ export default function PatientAppointments({ patient }) {
                 {appointment.clinicAddress && <div><dt className="text-slate-500">{labels.address}</dt><dd className="mt-1 break-words text-[#263e34]">{appointment.clinicAddress}</dd></div>}
                 {appointment.reason && <div className="sm:col-span-2"><dt className="text-slate-500">{labels.reason}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-[#263e34]">{appointment.reason}</dd></div>}
               </dl>
+              {group === "upcoming" &&
+                (appointment.status === "Pending" || appointment.status === "Confirmed") && (
+                  <div className="mt-5 border-t border-[#edf0eb] pt-4">
+                    <button
+                      type="button"
+                      disabled={cancellingId !== null}
+                      onClick={() => handleCancel(appointment.id)}
+                      className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {cancellingId === appointment.id ? "Отменяем..." : "Отменить запись"}
+                    </button>
+                  </div>
+                )}
             </article>
           ))}
         </div>}

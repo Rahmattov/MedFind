@@ -1,6 +1,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { getAppointmentSlots } from "../api/appointments";
 import { doctors as mockDoctors } from "../data/doctors";
 
 const API_BASE_URL = (
@@ -162,29 +163,26 @@ export default function DoctorProfile() {
       setSlots([]);
       setTime("");
 
-      try {
-        const params = new URLSearchParams({
-          doctorId: doctor.id,
-          date,
-          clinicId,
-        });
+      const isKnownDoctorClinic = (doctor?.clinics ?? []).some(
+        (clinic) => String(clinic.id) === String(clinicId)
+      );
 
-        const response = await fetch(
-          `${API_BASE_URL}/appointments/slots?${params.toString()}`,
-          { signal: controller.signal }
+      try {
+        const availableSlots = await getAppointmentSlots(
+          doctor.id,
+          clinicId,
+          date,
+          {
+            signal: controller.signal,
+            isKnownDoctorClinic,
+          }
         );
 
-        const data = await readResponse(response);
-
-        if (!Array.isArray(data)) {
-          throw new Error("Сервер вернул некорректный список времени.");
-        }
-
         if (!controller.signal.aborted) {
-          setSlots(data);
+          setSlots(availableSlots);
         }
       } catch (error) {
-        if (error.name !== "AbortError") {
+        if (error.name !== "AbortError" && !controller.signal.aborted) {
           setSlotsError(true);
         }
       } finally {
@@ -357,20 +355,19 @@ async function handleReviewSubmit(event) {
       setTime("");
       setReason("");
 
-      const params = new URLSearchParams({
-        doctorId: doctor.id,
-        date,
-        clinicId,
-      });
+      const isKnownDoctorClinic = (doctor?.clinics ?? []).some(
+        (clinic) => String(clinic.id) === String(clinicId)
+      );
 
       try {
-        const slotsResponse = await fetch(
-          `${API_BASE_URL}/appointments/slots?${params.toString()}`
+        const updatedSlots = await getAppointmentSlots(
+          doctor.id,
+          clinicId,
+          date,
+          { isKnownDoctorClinic }
         );
-        if (!slotsResponse.ok) throw new Error("Slots refresh failed");
-        const updatedSlots = await slotsResponse.json();
-        if (!Array.isArray(updatedSlots)) throw new Error("Invalid slots response");
         setSlots(updatedSlots);
+        setSlotsError(false);
       } catch {
         setSlots([]);
         setSlotsError(true);
@@ -884,18 +881,33 @@ async function handleReviewSubmit(event) {
                   ))}
                 </select>
 
-                <p className="mt-2 text-xs leading-5 text-slate-400">
-                  {slotsLoading
-                    ? "Проверяем доступность времени..."
-                    : "Показываем свободные слоты из расписания клиники."}
-                </p>
-                {slotsError && (
-                  <div role="alert" className="mt-2 text-xs leading-5 text-red-700">
-                    Не удалось загрузить свободное время. {" "}
-                    <button type="button" disabled={bookingLoading} onClick={() => setSlotsRetry((value) => value + 1)} className="font-semibold underline disabled:opacity-50">
+                {slotsLoading ? (
+                  <p role="status" className="mt-2 text-xs leading-5 text-slate-500">
+                    Проверяем доступность времени...
+                  </p>
+                ) : slotsError ? (
+                  <div role="alert" className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs leading-5 text-red-700">
+                    Не удалось загрузить свободное время.{" "}
+                    <button
+                      type="button"
+                      disabled={bookingLoading}
+                      onClick={() => setSlotsRetry((value) => value + 1)}
+                      className="font-semibold underline disabled:opacity-50"
+                    >
                       Попробовать снова
                     </button>
                   </div>
+                ) : date && clinicId && slots.length === 0 ? (
+                  <p
+                    role="status"
+                    className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs leading-5 text-amber-800"
+                  >
+                    На выбранную дату нет свободного времени для записи. Попробуйте выбрать другую дату или клинику.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs leading-5 text-slate-400">
+                    Показываем свободные слоты из расписания клиники.
+                  </p>
                 )}
               </div>
 
@@ -940,7 +952,20 @@ async function handleReviewSubmit(event) {
                         ? "!"
                         : "i"}
                   </span>
-                  <span>{message}</span>
+                  <div className="flex flex-1 flex-wrap items-center justify-between gap-3">
+                    <span>{message}</span>
+                    {!localStorage.getItem(TOKEN_KEY) &&
+                      message ===
+                        "Войдите в аккаунт пациента, чтобы записаться на приём." && (
+                        <Link
+                          to="/login"
+                          state={{ from: `/doctor/${id}` }}
+                          className="inline-flex shrink-0 items-center justify-center rounded-lg bg-[#173f53] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[#117b83]"
+                        >
+                          Войти
+                        </Link>
+                      )}
+                  </div>
                 </div>
               )}
 

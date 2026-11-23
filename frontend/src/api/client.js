@@ -7,15 +7,36 @@ const API_BASE_URL = (
 ).replace(/\/$/, "");
 
 function getErrorMessage(payload) {
-  const message = payload?.error ?? payload?.message ?? payload?.detail ?? payload?.title;
-  if (message) return message;
+  const directMessage = payload?.error ?? payload?.message ?? payload?.detail;
+  if (directMessage) return directMessage;
 
   if (payload?.errors) {
-    const validationMessages = Object.values(payload.errors)
-      .flat()
-      .filter((value) => typeof value === "string");
+    const rawErrors = Array.isArray(payload.errors)
+      ? payload.errors
+      : Object.values(payload.errors).flat();
+
+    const validationMessages = rawErrors
+      .map((item) => {
+        if (typeof item === "string") return item.trim();
+        if (item && typeof item === "object") {
+          return String(
+            item.description ??
+              item.Description ??
+              item.message ??
+              item.error ??
+              item.code ??
+              item.Code ??
+              "",
+          ).trim();
+        }
+        return "";
+      })
+      .filter(Boolean);
+
     if (validationMessages.length > 0) return validationMessages.join(" ");
   }
+
+  if (payload?.title) return payload.title;
 
   return "Не удалось выполнить запрос. Попробуйте ещё раз.";
 }
@@ -58,6 +79,7 @@ export async function apiRequest(path, options = {}) {
   if (!response.ok) {
     const error = new Error(getErrorMessage(payload));
     error.status = response.status;
+    error.payload = payload;
     throw error;
   }
 
