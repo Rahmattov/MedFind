@@ -123,112 +123,71 @@ export default function PatientProfile() {
           </div>
         </section>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_300px]">
-          <section className="rounded-3xl border border-[#e5eae3] bg-white p-6 shadow-sm sm:p-8">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Информация, связанная с вашим профилем.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#dce7dc] bg-[#f7faf6] px-4 py-3 text-sm font-semibold text-[#245747] transition hover:bg-[#eaf2eb] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span aria-hidden="true">{refreshing ? "◌" : "↻"}</span>
-                {refreshing ? "Обновляем..." : "Обновить"}
-              </button>
+        <section className="mt-6 rounded-3xl border border-[#e5eae3] bg-white p-6 shadow-sm sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Информация, связанная с вашим профилем.
+              </p>
             </div>
 
-            {authError && (
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#dce7dc] bg-[#f7faf6] px-4 py-3 text-sm font-semibold text-[#245747] transition hover:bg-[#eaf2eb] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span aria-hidden="true">{refreshing ? "◌" : "↻"}</span>
+              {refreshing ? "Обновляем..." : "Обновить"}
+            </button>
+          </div>
+
+          {authError && (
+            <div
+              role="status"
+              className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4"
+            >
+              <p className="font-semibold text-amber-950">
+                Не удалось связаться с сервером
+              </p>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                Показаны доступные сохранённые данные. Попробуйте обновить
+                профиль.
+              </p>
+            </div>
+          )}
+
+          {refreshError && (
+            <div
+              role="alert"
+              className="mt-6 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm leading-6 text-red-700"
+            >
+              {refreshError}
+            </div>
+          )}
+
+          <dl className="mt-7 grid gap-4 sm:grid-cols-2">
+            {fields.map(({ label, value, icon }) => (
               <div
-                role="status"
-                className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4"
+                key={label}
+                className="min-w-0 rounded-2xl border border-[#edf0eb] bg-[#fafbf9] p-4 transition hover:border-[#d6e4d6]"
               >
-                <p className="font-semibold text-amber-950">
-                  Не удалось связаться с сервером
-                </p>
-                <p className="mt-1 text-sm leading-6 text-amber-800">
-                  Показаны доступные сохранённые данные. Попробуйте обновить
-                  профиль.
-                </p>
-              </div>
-            )}
-
-            {refreshError && (
-              <div
-                role="alert"
-                className="mt-6 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm leading-6 text-red-700"
-              >
-                {refreshError}
-              </div>
-            )}
-
-            <dl className="mt-7 grid gap-4 sm:grid-cols-2">
-              {fields.map(({ label, value, icon }) => (
-                <div
-                  key={label}
-                  className="min-w-0 rounded-2xl border border-[#edf0eb] bg-[#fafbf9] p-4 transition hover:border-[#d6e4d6]"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eaf2eb] text-lg text-[#245747]">
-                      {icon}
-                    </span>
-                    <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                      {label}
-                    </dt>
-                  </div>
-
-                  <dd className="mt-4 break-words text-sm font-semibold leading-6 text-[#263e34]">
-                    {value || "Не указано"}
-                  </dd>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eaf2eb] text-lg text-[#245747]">
+                    {icon}
+                  </span>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    {label}
+                  </dt>
                 </div>
-              ))}
-            </dl>
-          </section>
 
-          <div className="self-start rounded-3xl border border-[#e5eae3] bg-white p-6 shadow-sm">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eaf2eb] text-2xl text-[#245747]">
-              ◫
-            </div>
-
-            <h3 className="mt-4 font-display text-xl font-semibold text-[#173f35]">
-              Панель управления
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Перейдите на страницу dashboard.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => navigate("/dashboard")}
-              className="mt-5 flex w-full items-center justify-between rounded-xl bg-[#173f35] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#245747]"
-            >
-              Открыть dashboard
-              <span aria-hidden="true">↗</span>
-            </button>
-          </div>
-
-          <div className="self-start rounded-3xl border border-[#e5eae3] bg-white p-6 shadow-sm">
-            <h3 className="mt-4 font-display text-xl font-semibold text-[#173f35]">
-              Кабинет клиники
-            </h3>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Перейдите в панель управления клиникой.
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate("/clinic-dashboard")}
-              className="mt-5 flex w-full items-center justify-between rounded-xl bg-[#173f35] px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-[#245747]"
-            >
-              Открыть кабинет клиники
-            </button>
-          </div>
-        </div>
+                <dd className="mt-4 break-words text-sm font-semibold leading-6 text-[#263e34]">
+                  {value || "Не указано"}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
         <PatientAppointments patient={patient} />
       </div>
     </main>
