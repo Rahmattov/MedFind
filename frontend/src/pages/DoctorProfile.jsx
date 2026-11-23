@@ -952,7 +952,20 @@ async function handleReviewSubmit(event) {
                         ? "!"
                         : "i"}
                   </span>
-                  <span>{message}</span>
+                  <div className="flex flex-1 flex-wrap items-center justify-between gap-3">
+                    <span>{message}</span>
+                    {!localStorage.getItem(TOKEN_KEY) &&
+                      message ===
+                        "Войдите в аккаунт пациента, чтобы записаться на приём." && (
+                        <Link
+                          to="/login"
+                          state={{ from: `/doctor/${id}` }}
+                          className="inline-flex shrink-0 items-center justify-center rounded-lg bg-[#173f53] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[#117b83]"
+                        >
+                          Войти
+                        </Link>
+                      )}
+                  </div>
                 </div>
               )}
 
